@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import nu.xom.ParsingException;
 import nu.xom.ValidityException;
@@ -11,8 +12,10 @@ import nu.xom.ValidityException;
 import org.apache.http.client.ClientProtocolException;
 
 public class VideoCache {
-	Map< String, Video > pathMap;
-	Map< String, Video > keyMap;
+	private static Logger logger = Logger.getLogger( VideoCache.class.getName() );
+
+	private Map< String, Video > pathMap;
+	private Map< String, Video > keyMap;
 
 	private PlexNMTHelper helper;
 	private String unknownPath;
@@ -26,7 +29,7 @@ public class VideoCache {
 	}
 
 	public void load() throws ClientProtocolException, ValidityException, IllegalStateException, IOException, ParsingException, InterruptedException {
-		System.out.println( "Building video cache" );
+		logger.info( "Building video cache" );
 
 		List< Video > videos = helper.getServer().getKnownVideos();
 
@@ -43,6 +46,8 @@ public class VideoCache {
 
 		pathMap = tempPathMap;
 		keyMap = tempKeyMap;
+
+		logger.info( "Found " + videos.size() + " videos" );
 	}
 
 	private void updateGuid( Video video ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException, ParsingException {

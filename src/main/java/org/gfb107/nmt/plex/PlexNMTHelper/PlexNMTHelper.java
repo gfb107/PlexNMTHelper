@@ -52,10 +52,6 @@ public class PlexNMTHelper implements Container {
 			System.setProperty( "java.util.logging.config.file", "logging.properties" );
 			logger = Logger.getLogger( PlexNMTHelper.class.getName() );
 
-			if ( args.length > 1 ) {
-				logger.severe( "Usage: PlexNMTHelper [propertiesFile]" );
-			}
-
 			String fileName = "PlexNMTHelper.properties";
 
 			if ( args.length == 1 ) {
@@ -220,7 +216,7 @@ public class PlexNMTHelper implements Container {
 			if ( message == null ) {
 				message = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><Response code=\"200\" status=\"OK\" />";
 			} else {
-				logger.fine( "Responding with: " + message );
+				logger.finer( "Responding with: " + message );
 			}
 
 			response.setContentLength( message.length() );
@@ -248,7 +244,7 @@ public class PlexNMTHelper implements Container {
 
 		logger.fine( "Processing request for " + fullPath );
 		for ( Map.Entry< String, String > entry : query.entrySet() ) {
-			logger.fine( entry.getKey() + "=" + entry.getValue() );
+			logger.finer( entry.getKey() + "=" + entry.getValue() );
 		}
 		if ( fullPath.equals( "/resources" ) ) {
 			return "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<MediaContainer><Player platformVersion=\"2.00\" version=\"0.1\" protocolVersion=\"1\" machineIdentifier=\""
@@ -282,7 +278,7 @@ public class PlexNMTHelper implements Container {
 			// from mobile client
 			nmt.sendKey( "stop", "playback" );
 
-			int offset = query.getInteger( "offset" ) / 1000;
+			int offset = query.getInteger( "offset" );
 			String type = query.get( "type" );
 			String commandId = query.get( "commandID" );
 			String containerKey = query.get( "containerKey" );
@@ -359,7 +355,7 @@ public class PlexNMTHelper implements Container {
 	private void playVideo( int time, String containerKey ) throws ClientProtocolException, IOException, ValidityException, IllegalStateException,
 			ParsingException, InterruptedException {
 		Video video = getVideoByKey( containerKey );
-
+		video.setCurrentTime( time );
 		nmt.play( video, time );
 	}
 
@@ -375,7 +371,10 @@ public class PlexNMTHelper implements Container {
 				Track track = tracks[i];
 				nmt.insertInQueue( track );
 				if ( track.getKey().equals( trackKey ) ) {
+					track.setCurrentTime( viewOffset );
 					trackIndex = i;
+				} else {
+					track.setCurrentTime( 0 );
 				}
 			}
 

@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import nu.xom.Attribute;
 import nu.xom.Builder;
@@ -23,6 +24,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
 
 public class PlexServer {
+	private static Logger logger = Logger.getLogger( PlexServer.class.getName() );
 	private String name;
 	private String address;
 	private int port;
@@ -87,7 +89,7 @@ public class PlexServer {
 	}
 
 	public Element sendCommand( String path ) throws ClientProtocolException, IOException, ValidityException, IllegalStateException, ParsingException {
-		// System.out.println( path );
+		logger.fine( "Getting " + path );
 		HttpGet get = new HttpGet( prefix + path );
 		get.addHeader( "X-Plex-Client-Identifier", clientId );
 		get.addHeader( "X-Plex-Device", "stb" );
@@ -109,7 +111,7 @@ public class PlexServer {
 			EntityUtils.consume( entity );
 		}
 
-		// System.out.println( response.toXML() );
+		logger.finer( "Response was " + response.toXML() );
 		return response;
 	}
 

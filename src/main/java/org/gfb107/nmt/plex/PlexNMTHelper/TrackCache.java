@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import nu.xom.ParsingException;
 import nu.xom.ValidityException;
@@ -11,6 +12,7 @@ import nu.xom.ValidityException;
 import org.apache.http.client.ClientProtocolException;
 
 public class TrackCache {
+	private static Logger logger = Logger.getLogger( TrackCache.class.getName() );
 	private Map< String, Track > map;
 	private PlexNMTHelper helper;
 	private String unknownPath;
@@ -22,7 +24,7 @@ public class TrackCache {
 	}
 
 	public void load() throws ClientProtocolException, ValidityException, IllegalStateException, IOException, ParsingException {
-		System.out.println( "Building track cache" );
+		logger.info( "Building track cache" );
 
 		List< Track > tracks = helper.getServer().getKnownTracks();
 

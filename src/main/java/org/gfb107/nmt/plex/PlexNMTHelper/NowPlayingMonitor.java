@@ -1,8 +1,11 @@
 package org.gfb107.nmt.plex.PlexNMTHelper;
 
+import java.util.logging.Logger;
+
 import nu.xom.Element;
 
 public class NowPlayingMonitor implements Runnable {
+	private static Logger logger = Logger.getLogger( NowPlayingMonitor.class.getName() );
 
 	public NowPlayingMonitor( PlexNMTHelper helper, NetworkedMediaTank nmt ) {
 		this.helper = helper;
@@ -20,7 +23,7 @@ public class NowPlayingMonitor implements Runnable {
 
 	@Override
 	public void run() {
-		System.out.println( "NowPlayingMonitor started" );
+		logger.info( "NowPlayingMonitor started" );
 		Video lastVideo = null;
 		Track lastTrack = null;
 		while ( !stop ) {
@@ -35,7 +38,7 @@ public class NowPlayingMonitor implements Runnable {
 				Video video = null;
 
 				if ( returnValue.equals( "0" ) ) {
-
+					logger.fine( "A video is playing" );
 					Element response = container.getFirstChildElement( "response" );
 					String fullPath = response.getFirstChildElement( "fullPath" ).getValue();
 					state = response.getFirstChildElement( "currentStatus" ).getValue();
@@ -50,11 +53,13 @@ public class NowPlayingMonitor implements Runnable {
 					video = helper.getVideoByPath( fullPath );
 
 					if ( lastVideo != null && lastVideo != video ) {
+						logger.finer( "It's a different video than last time" );
 						helper.updateTimeline( lastVideo, "stopped" );
 						lastVideo = null;
 					}
 
 					if ( lastTrack != null ) {
+						logger.fine( "There was a track playing last time" );
 						helper.updateTimeline( lastTrack, "stopped" );
 						lastTrack = null;
 					}
@@ -75,6 +80,7 @@ public class NowPlayingMonitor implements Runnable {
 				if ( video == null ) {
 
 					if ( lastVideo != null ) {
+						logger.fine( "There was a video playing last time" );
 						helper.updateTimeline( lastVideo, "stopped" );
 						lastVideo = null;
 					}
@@ -85,6 +91,7 @@ public class NowPlayingMonitor implements Runnable {
 					state = null;
 
 					if ( returnValue.equals( "0" ) ) {
+						logger.fine( "There's a track playing" );
 
 						Element response = container.getFirstChildElement( "response" );
 						String fullPath = response.getFirstChildElement( "fullPath" ).getValue();
@@ -95,6 +102,7 @@ public class NowPlayingMonitor implements Runnable {
 						track = helper.getTrack( fullPath );
 
 						if ( lastTrack != null && lastTrack != track ) {
+							logger.fine( "It's a different track than last time" );
 							helper.updateTimeline( lastTrack, "stopped" );
 							lastTrack = null;
 						}
@@ -118,6 +126,7 @@ public class NowPlayingMonitor implements Runnable {
 				}
 
 				if ( lastTrack != null ) {
+					logger.fine( "No track this time, but there was a track last time" );
 					helper.updateTimeline( lastTrack, "stopped" );
 					lastTrack = null;
 				}
@@ -126,6 +135,6 @@ public class NowPlayingMonitor implements Runnable {
 				ex.printStackTrace();
 			}
 		}
-		System.out.println( "NowPlayingMonitor ending" );
+		logger.info( "NowPlayingMonitor ending" );
 	}
 }

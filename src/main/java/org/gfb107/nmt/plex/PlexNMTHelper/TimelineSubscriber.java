@@ -1,6 +1,8 @@
 package org.gfb107.nmt.plex.PlexNMTHelper;
 
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import nu.xom.Attribute;
 import nu.xom.Builder;
@@ -19,6 +21,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
 
 public class TimelineSubscriber {
+	private static Logger logger = Logger.getLogger( TimelineSubscriber.class.getName() );
 	private String clientId;
 	private String clientName;
 	private String clientAddress;
@@ -97,6 +100,8 @@ public class TimelineSubscriber {
 
 		Document container = generateTimelineContainer( audioElement, photoElement, videoElement );
 
+		logger.finer( "Posting to " + postUrl );
+
 		HttpPost post = new HttpPost( postUrl );
 		post.addHeader( "Host", clientAddress + ":" + clientPort );
 		post.addHeader( "Content-Range", "bytes 0-/-1" );
@@ -106,7 +111,7 @@ public class TimelineSubscriber {
 		post.addHeader( "X-Plex-Provides", "player" );
 
 		String xml = container.toXML();
-		// System.out.println( xml );
+		logger.finer( "Sending " + xml );
 
 		post.setEntity( new StringEntity( xml ) );
 
@@ -125,7 +130,9 @@ public class TimelineSubscriber {
 			EntityUtils.consume( entity );
 		}
 
-		// System.out.println( response.toXML() );
+		if ( logger.isLoggable( Level.FINE ) ) {
+			logger.fine( "Response was " + response.toXML() );
+		}
 		return response;
 	}
 
@@ -178,7 +185,9 @@ public class TimelineSubscriber {
 		timeline.addAttribute( new Attribute( "type", audio.getType() ) );
 		timeline.addAttribute( new Attribute( "volume", "100" ) );
 
-		// System.out.println( timeline.toXML() );
+		if ( logger.isLoggable( Level.FINER ) ) {
+			logger.finer( timeline.toXML() );
+		}
 
 		return timeline;
 	}

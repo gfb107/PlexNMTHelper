@@ -7,9 +7,11 @@ import java.io.InputStreamReader;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.util.logging.Logger;
 
 public class GDMAnnouncer implements Runnable {
 
+	private static Logger logger = Logger.getLogger( GDMAnnouncer.class.getName() );
 	private InetAddress gdmAddress = null;
 	private static final int announcePort = 32412;
 	private String announceMessage = null;
@@ -37,7 +39,7 @@ public class GDMAnnouncer implements Runnable {
 	}
 
 	public void run() {
-		System.out.println( "GDMAnnouncer running" );
+		logger.fine( "GDMAnnouncer running" );
 
 		MulticastSocket announceSocket = null;
 		try {
@@ -68,7 +70,7 @@ public class GDMAnnouncer implements Runnable {
 					continue;
 				}
 
-				// System.out.println( announceMessage );
+				logger.finer( announceMessage );
 
 				DatagramPacket announcePacket = new DatagramPacket( announceMessage.getBytes(), announceMessage.length(), pollPacket.getAddress(),
 						pollPacket.getPort() );

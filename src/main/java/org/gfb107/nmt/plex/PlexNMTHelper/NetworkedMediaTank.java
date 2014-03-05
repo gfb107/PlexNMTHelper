@@ -3,6 +3,7 @@ package org.gfb107.nmt.plex.PlexNMTHelper;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.logging.Logger;
 
 import nu.xom.Builder;
 import nu.xom.Element;
@@ -16,6 +17,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
 public class NetworkedMediaTank {
+	private static Logger logger = Logger.getLogger( NetworkedMediaTank.class.getName() );
 	private String address;
 	private String name;
 
@@ -65,11 +67,11 @@ public class NetworkedMediaTank {
 		}
 
 		String url = sb.toString();
-		// System.out.println( url );
+		logger.finer( "Getting " + url );
 
 		Builder builder = new Builder();
 		Element response = builder.build( client.execute( new HttpGet( url ) ).getEntity().getContent() ).getRootElement();
-		// System.out.println( response.toXML() );
+		logger.finer( "Response was " + response.toXML() );
 
 		Thread.sleep( 100 );
 
@@ -91,7 +93,8 @@ public class NetworkedMediaTank {
 
 	public void play( Video video, int time ) throws ClientProtocolException, ValidityException, IllegalStateException, UnsupportedEncodingException,
 			IOException, ParsingException, InterruptedException {
-		sendCommand( "playback", "start_vod", fix( video.getTitle() ), fix( video.getFile() ).replace( "%2F", "/" ), "show", Integer.toString( time ) );
+		sendCommand( "playback", "start_vod", fix( video.getTitle() ), fix( video.getFile() ).replace( "%2F", "/" ), "show",
+				Integer.toString( time / 1000 ) );
 	}
 
 	public void insertInQueue( Track track ) throws ClientProtocolException, ValidityException, IllegalStateException, UnsupportedEncodingException,
