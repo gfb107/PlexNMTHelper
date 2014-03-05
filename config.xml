@@ -1,0 +1,7 @@
+<config>
+	<playback>
+		<replace_policy>
+			<replace from="\\MINI\Mounts\" to="smb://MINI/Mounts" />
+		</replace_policy>
+	</playback>
+</config>
