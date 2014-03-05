@@ -36,6 +36,7 @@ public class TrackCache {
 			tempMap.put( track.getFile(), track );
 		}
 
+		logger.info( "Found " + tracks.size() + " tracks" );
 		map = tempMap;
 	}
 
