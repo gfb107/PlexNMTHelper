@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>PlexNMTHelper</groupId>
 	<artifactId>PlexNMTHelper</artifactId>
-	<version>1.0</version>
+	<version>1.0.1</version>
 	<name>Plex NMT Helper</name>
 
 	<build>
@@ -36,6 +36,7 @@
 				<version>2.4</version>
 				<configuration>
 					<appendAssemblyId>false</appendAssemblyId>
+                    <finalName>${project.artifactId}-${project.version}</finalName>
 					<descriptors>
 						<descriptor>src/main/assembly/distribution.xml</descriptor>
 					</descriptors>

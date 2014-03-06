@@ -436,6 +436,7 @@ public class PlexNMTHelper implements Container {
 
 	public void fix( Video video ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException, ParsingException,
 			InterruptedException {
+		logger.finer( "Processing video, key=" + video.getKey() + ", file=" + video.getFile() );
 		String file = video.getFile();
 		file = file.replace( '\\', '/' );
 		for ( Replacement replacement : replacements ) {
@@ -455,6 +456,7 @@ public class PlexNMTHelper implements Container {
 			video.setFile( convertedShare + file.substring( slash + 1 ) );
 		} else {
 			logger.warning( "Video \"" + video.getTitle() + "\" will be played using HTTP streaming!" );
+			logger.finer( video.getHttpFile() );
 			video.setFile( video.getHttpFile() );
 		}
 	}

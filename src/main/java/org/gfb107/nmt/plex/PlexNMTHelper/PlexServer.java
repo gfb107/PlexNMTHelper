@@ -150,7 +150,7 @@ public class PlexServer {
 		Element media = videoElement.getFirstChildElement( "Media" );
 		Element part = media.getFirstChildElement( "Part" );
 		String file = part.getAttributeValue( "file" );
-		String httpFile = part.getAttributeValue( "key" );
+		String httpFile = prefix + part.getAttributeValue( "key" );
 
 		return new Video( key, ratingKey, title, guid, duration, file, httpFile );
 	}
