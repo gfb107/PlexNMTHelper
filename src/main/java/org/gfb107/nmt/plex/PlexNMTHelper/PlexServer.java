@@ -3,9 +3,8 @@ package org.gfb107.nmt.plex.PlexNMTHelper;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
 import nu.xom.Attribute;
@@ -36,8 +35,6 @@ public class PlexServer {
 
 	private CloseableHttpClient client;
 
-	private Map< String, String > sections = new HashMap< String, String >();
-
 	private Element successResponse = null;
 
 	public PlexServer( String address, int port, String name ) {
@@ -67,17 +64,20 @@ public class PlexServer {
 	public void setClient( CloseableHttpClient client ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException,
 			ParsingException {
 		this.client = client;
-
-		loadLibrarySections();
 	}
 
-	private void loadLibrarySections() throws ClientProtocolException, ValidityException, IllegalStateException, IOException, ParsingException {
+	public List< String > getLibrarySections( String... types ) throws ClientProtocolException, ValidityException, IllegalStateException,
+			IOException, ParsingException {
+		Arrays.sort( types );
 		Element container = sendCommand( "/library/sections" );
 		Elements directories = container.getChildElements( "Directory" );
+		List< String > sections = new ArrayList< String >( directories.size() );
 		for ( int i = 0; i < directories.size(); ++i ) {
 			Element directory = directories.get( i );
-			sections.put( directory.getAttributeValue( "type" ), directory.getAttributeValue( "key" ) );
+			if ( Arrays.binarySearch( types, directory.getAttributeValue( "type" ) ) >= 0 )
+				sections.add( directory.getAttributeValue( "key" ) );
 		}
+		return sections;
 	}
 
 	public void setClientName( String clientName ) {
@@ -187,23 +187,32 @@ public class PlexServer {
 	}
 
 	public List< Track > getKnownTracks() throws ClientProtocolException, ValidityException, IllegalStateException, IOException, ParsingException {
-		Element container = sendCommand( "/library/sections/" + sections.get( "artist" ) + "/allLeaves" );
-		Elements trackElements = container.getChildElements();
-		List< Track > tracks = new ArrayList< Track >( trackElements.size() );
-		for ( int i = 0; i < trackElements.size(); ++i ) {
-			tracks.add( getTrack( trackElements.get( i ) ) );
+		ArrayList< Track > tracks = new ArrayList< Track >();
+		List< String > sections = getLibrarySections( "artist" );
+		for ( String section : sections ) {
+			Element container = sendCommand( "/library/sections/" + section + "/allLeaves" );
+			Elements trackElements = container.getChildElements();
+			tracks.ensureCapacity( tracks.size() + trackElements.size() );
+			for ( int i = 0; i < trackElements.size(); ++i ) {
+				tracks.add( getTrack( trackElements.get( i ) ) );
+			}
 		}
 
 		return tracks;
 	}
 
 	public List< Video > getKnownVideos() throws ClientProtocolException, ValidityException, IllegalStateException, IOException, ParsingException {
-		Element container = sendCommand( "/library/sections/" + sections.get( "movie" ) + "/allLeaves" );
-		Elements videoElements = container.getChildElements();
-		List< Video > videos = new ArrayList< Video >( videoElements.size() );
-		for ( int i = 0; i < videoElements.size(); ++i ) {
-			videos.add( getVideo( videoElements.get( i ) ) );
+		ArrayList< Video > videos = new ArrayList< Video >();
+		List< String > sections = getLibrarySections( "movie", "show" );
+		for ( String section : sections ) {
+			Element container = sendCommand( "/library/sections/" + section + "/allLeaves" );
+			Elements videoElements = container.getChildElements();
+			videos.ensureCapacity( videos.size() + videoElements.size() );
+			for ( int i = 0; i < videoElements.size(); ++i ) {
+				videos.add( getVideo( videoElements.get( i ) ) );
+			}
 		}
+		videos.trimToSize();
 
 		return videos;
 	}

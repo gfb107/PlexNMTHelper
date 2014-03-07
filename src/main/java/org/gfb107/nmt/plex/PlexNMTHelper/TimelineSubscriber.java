@@ -142,7 +142,7 @@ public class TimelineSubscriber {
 		// timeline.addAttribute( new Attribute( "audioStreamID",
 		// Integer.toString( video.getStream( audioStreamIndex ) ) ) );
 		timeline.addAttribute( new Attribute( "containerKey", video.getContainerKey() ) );
-		timeline.addAttribute( new Attribute( "controllable", "playPause,stop,seekTo,repeat,skipPrevious,skipNext,stepForward" ) );
+		timeline.addAttribute( new Attribute( "controllable", "playPause,stop,seekTo,stepBack,stepForward" ) );
 		timeline.addAttribute( new Attribute( "duration", Integer.toString( video.getDuration() ) ) );
 		timeline.addAttribute( new Attribute( "guid", video.getGuid() ) );
 		timeline.addAttribute( new Attribute( "key", video.getKey() ) );

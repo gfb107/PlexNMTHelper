@@ -2,7 +2,9 @@ package org.gfb107.nmt.plex.PlexNMTHelper;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.SocketTimeoutException;
 import java.net.URLEncoder;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import nu.xom.Builder;
@@ -70,11 +72,22 @@ public class NetworkedMediaTank {
 		logger.finer( "Getting " + url );
 
 		Builder builder = new Builder();
-		Element response = builder.build( client.execute( new HttpGet( url ) ).getEntity().getContent() ).getRootElement();
-		logger.finer( "Response was " + response.toXML() );
+		Element response;
+		while ( true ) {
+
+			try {
+				response = builder.build( client.execute( new HttpGet( url ) ).getEntity().getContent() ).getRootElement();
+				if ( logger.isLoggable( Level.FINER ) ) {
+					logger.finer( "Response was " + response.toXML() );
+				}
+				break;
+			} catch ( SocketTimeoutException ex ) {
+				logger.warning( "Request timed out, will retry" );
+				Thread.sleep( 1000 );
+			}
+		}
 
 		Thread.sleep( 100 );
-
 		return response;
 	}
 

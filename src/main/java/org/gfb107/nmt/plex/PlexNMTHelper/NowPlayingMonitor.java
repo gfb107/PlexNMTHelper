@@ -21,11 +21,21 @@ public class NowPlayingMonitor implements Runnable {
 		this.stop = stop;
 	}
 
+	private Video lastVideo = null;
+
+	public Video getLastVideo() {
+		return lastVideo;
+	}
+
+	private Track lastTrack = null;
+
+	public Track getLastTrack() {
+		return lastTrack;
+	}
+
 	@Override
 	public void run() {
 		logger.info( "NowPlayingMonitor started" );
-		Video lastVideo = null;
-		Track lastTrack = null;
 		while ( !stop ) {
 			try {
 				Thread.sleep( 1000 ); // sleep 1 second between iterations

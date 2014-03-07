@@ -1,9 +1,11 @@
 package org.gfb107.nmt.plex.PlexNMTHelper;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -128,7 +130,13 @@ public class PlexNMTHelper implements Container {
 			// connection.close();
 
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ByteArrayOutputStream out = new ByteArrayOutputStream( 1000 );
+			PrintWriter pw = new PrintWriter( out );
+			ex.printStackTrace( pw );
+			pw.flush();
+			pw.close();
+			logger.severe( out.toString() );
+			System.exit( -1 );
 		}
 	}
 
@@ -158,9 +166,6 @@ public class PlexNMTHelper implements Container {
 		server.setClient( client );
 
 		listenPort = port;
-
-		nowPlayingMonitor = new NowPlayingMonitor( this, nmt );
-		new Thread( nowPlayingMonitor ).start();
 
 		navigationMap.put( "moveRight", "right" );
 		navigationMap.put( "moveLeft", "left" );
@@ -255,7 +260,7 @@ public class PlexNMTHelper implements Container {
 		} else if ( directory.equals( "/player/timeline/" ) ) {
 			int port = query.getInteger( "port" );
 			String commandId = query.get( "commandID" );
-			String address = request.getClientAddress().getHostString();
+			String address = request.getClientAddress().getAddress().getHostAddress();
 			String clientId = request.getValue( "X-Plex-Client-Identifier" );
 
 			if ( name.equals( "subscribe" ) ) {
@@ -299,6 +304,29 @@ public class PlexNMTHelper implements Container {
 			if ( name.equals( "seekTo" ) ) {
 				int offset = query.getInteger( "offset" ) / 1000;
 				return seek( offset, type );
+			} else if ( name.equals( "stepForward" ) || name.equals( "stepBack" ) ) {
+				Playable playable = null;
+				if ( type.equals( "video" ) ) {
+					playable = nowPlayingMonitor.getLastVideo();
+				} else if ( type.equals( "music" ) ) {
+					playable = nowPlayingMonitor.getLastTrack();
+				}
+				if ( playable != null ) {
+					int time = playable.getCurrentTime() / 1000;
+					if ( name.equals( "stepForward" ) ) {
+						time += 30;
+						if ( time > playable.getDuration() ) {
+							time = playable.getDuration();
+						}
+					} else {
+						time -= 15;
+						if ( time < 0 ) {
+							time = 0;
+						}
+					}
+					return seek( time, type );
+				}
+				return null;
 			} else {
 				nmt.sendKey( playbackMap.get( name ), "playback" );
 				return null;
@@ -432,6 +460,9 @@ public class PlexNMTHelper implements Container {
 
 		videoCache = new VideoCache( this );
 		trackCache = new TrackCache( this );
+
+		nowPlayingMonitor = new NowPlayingMonitor( this, nmt );
+		new Thread( nowPlayingMonitor ).start();
 	}
 
 	public void fix( Video video ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException, ParsingException,
