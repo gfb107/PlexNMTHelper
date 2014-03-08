@@ -146,7 +146,11 @@ public class PlexServer {
 		String ratingKey = videoElement.getAttributeValue( "ratingKey" );
 		String title = videoElement.getAttributeValue( "title" );
 		String guid = videoElement.getAttributeValue( "guid" );
-		int duration = Integer.parseInt( videoElement.getAttributeValue( "duration" ) );
+		int duration = 0;
+		String temp = videoElement.getAttributeValue( "duration" );
+		if ( temp != null ) {
+			duration = Integer.parseInt( temp );
+		}
 		Element media = videoElement.getFirstChildElement( "Media" );
 		Element part = media.getFirstChildElement( "Part" );
 		String file = part.getAttributeValue( "file" );
@@ -160,7 +164,11 @@ public class PlexServer {
 		String key = track.getAttributeValue( "key" );
 		String title = track.getAttributeValue( "title" );
 		String parentKey = track.getAttributeValue( "parentKey" );
-		int duration = Integer.parseInt( track.getAttributeValue( "duration" ) );
+		int duration = 0;
+		String temp = track.getAttributeValue( "duration" );
+		if ( temp != null ) {
+			duration = Integer.parseInt( temp );
+		}
 		Element part = track.getFirstChildElement( "Media" ).getFirstChildElement( "Part" );
 		String file = prefix + part.getAttributeValue( "key" );
 

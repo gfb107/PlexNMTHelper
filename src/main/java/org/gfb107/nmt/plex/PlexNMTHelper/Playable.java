@@ -46,6 +46,10 @@ public abstract class Playable {
 		return duration;
 	}
 
+	public void setDuration( int duration ) {
+		this.duration = duration;
+	}
+
 	public int getCurrentTime() {
 		return currentTime;
 	}

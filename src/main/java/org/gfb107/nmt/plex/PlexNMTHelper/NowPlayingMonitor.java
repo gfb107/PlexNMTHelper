@@ -59,6 +59,7 @@ public class NowPlayingMonitor implements Runnable {
 					}
 
 					int currentTime = Integer.parseInt( response.getFirstChildElement( "currentTime" ).getValue() ) * 1000;
+					int totalTime = Integer.parseInt( response.getFirstChildElement( "totalTime" ).getValue() ) * 1000;
 
 					video = helper.getVideoByPath( fullPath );
 
@@ -76,6 +77,9 @@ public class NowPlayingMonitor implements Runnable {
 
 					if ( video != null ) {
 						video.setCurrentTime( currentTime );
+						if ( video.getDuration() == 0 ) {
+							video.setDuration( totalTime );
+						}
 
 						helper.updateTimeline( video, state );
 
@@ -108,6 +112,7 @@ public class NowPlayingMonitor implements Runnable {
 
 						state = response.getFirstChildElement( "currentStatus" ).getValue();
 						int currentTime = Integer.parseInt( response.getFirstChildElement( "currentTime" ).getValue() ) * 1000;
+						int totalTime = Integer.parseInt( response.getFirstChildElement( "totalTime" ).getValue() ) * 1000;
 
 						track = helper.getTrack( fullPath );
 
@@ -125,6 +130,9 @@ public class NowPlayingMonitor implements Runnable {
 							}
 
 							track.setCurrentTime( currentTime );
+							if ( track.getDuration() == 0 ) {
+								track.setDuration( totalTime );
+							}
 
 							helper.updateTimeline( track, state );
 

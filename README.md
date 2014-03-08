@@ -13,6 +13,8 @@ It can be controlled using
 
 History
 =======
+Version 1.0.3
+	Fix for Plex not providing a duration for some media
 
 Version 1.0.2
 	Add support for multiple library sections of the same type
