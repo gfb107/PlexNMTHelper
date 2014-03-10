@@ -150,7 +150,7 @@ public class NowPlayingMonitor implements Runnable {
 				}
 
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				ExceptionLogger.log( logger, ex );
 			}
 		}
 		logger.info( "NowPlayingMonitor ending" );

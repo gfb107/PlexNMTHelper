@@ -194,6 +194,11 @@ public class PlexServer {
 		video.setGuid( getVideo( container.getFirstChildElement( "Video" ) ).getGuid() );
 	}
 
+	public Video getVideo( String containerKey ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException,
+			ParsingException {
+		return getVideo( sendCommand( containerKey ).getFirstChildElement( "Video" ) );
+	}
+
 	public List< Track > getKnownTracks() throws ClientProtocolException, ValidityException, IllegalStateException, IOException, ParsingException {
 		ArrayList< Track > tracks = new ArrayList< Track >();
 		List< String > sections = getLibrarySections( "artist" );

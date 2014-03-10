@@ -49,7 +49,7 @@ public class GDMAnnouncer implements Runnable {
 
 			announceSocket.joinGroup( gdmAddress );
 		} catch ( IOException e ) {
-			e.printStackTrace();
+			ExceptionLogger.log( logger, e );
 		}
 
 		byte[] buf = new byte[1000];
@@ -77,7 +77,7 @@ public class GDMAnnouncer implements Runnable {
 
 				announceSocket.send( announcePacket );
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				ExceptionLogger.log( logger, ex );
 			}
 		}
 

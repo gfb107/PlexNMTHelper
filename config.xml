@@ -1,7 +1,12 @@
 <config>
 	<playback>
 		<replace_policy>
-			<replace from="\\MINI\Mounts\" to="smb://MINI/Mounts" />
+			<!-- Map a local directory (on the Plex Media Server) to an SMB network share 
+			<replace from="Z:\" to="smb://host/share/" />
+			-->
+			<!-- Map a local directory (on the Plex Media Server) to an SMB network share 
+			<replace from="/mnt/name/" to="nfs://host/share/" />
+			-->
 		</replace_policy>
 	</playback>
 </config>

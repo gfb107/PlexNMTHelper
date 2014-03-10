@@ -81,15 +81,10 @@ public class VideoCache {
 			InterruptedException {
 		Video video = keyMap.get( key );
 		if ( video == null ) {
-			if ( !key.equals( unknownKey ) ) {
-				load();
-				video = keyMap.get( key );
-				if ( video == null ) {
-					unknownKey = key;
-				} else {
-					unknownKey = null;
-				}
-			}
+			video = helper.getServer().getVideo( key );
+			helper.fix( video );
+			keyMap.put( key, video );
+			pathMap.put( video.getFile(), video );
 		} else {
 			unknownKey = null;
 		}

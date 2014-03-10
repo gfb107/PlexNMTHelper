@@ -13,6 +13,12 @@ It can be controlled using
 
 History
 =======
+Version 1.0.4
+	Remove discoveryPort configuration parameter. Only one port is needed.
+	Clean up exception logging.
+	If there is no replacement defined in config.xml for videos files that start with \\ or //, automatically create one 
+	Remove HTTP streaming warning when no matching replacement found for a video file.
+	
 Version 1.0.3
 	Fix for Plex not providing a duration for some media
 

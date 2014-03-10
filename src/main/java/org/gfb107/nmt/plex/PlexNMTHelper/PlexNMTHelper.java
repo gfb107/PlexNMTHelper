@@ -1,11 +1,9 @@
 package org.gfb107.nmt.plex.PlexNMTHelper;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -91,13 +89,6 @@ public class PlexNMTHelper implements Container {
 			}
 			int port = Integer.parseInt( temp );
 
-			temp = properties.getProperty( "discoveryPort" );
-			if ( temp == null ) {
-				logger.severe( "Missing property discoveryPort" );
-				return;
-			}
-			int discoveryPort = Integer.parseInt( temp );
-
 			temp = properties.getProperty( "replacementConfig" );
 			if ( temp == null ) {
 				logger.severe( "Missing property replacementConfig" );
@@ -106,7 +97,7 @@ public class PlexNMTHelper implements Container {
 
 			NetworkedMediaTank nmt = new NetworkedMediaTank( nmtAddress, nmtName );
 
-			GDMDiscovery discovery = new GDMDiscovery( discoveryPort );
+			GDMDiscovery discovery = new GDMDiscovery( port );
 			PlexServer server = discovery.discover();
 
 			String clientId = nmt.getMacAddress();
@@ -130,12 +121,7 @@ public class PlexNMTHelper implements Container {
 			// connection.close();
 
 		} catch ( Exception ex ) {
-			ByteArrayOutputStream out = new ByteArrayOutputStream( 1000 );
-			PrintWriter pw = new PrintWriter( out );
-			ex.printStackTrace( pw );
-			pw.flush();
-			pw.close();
-			logger.severe( out.toString() );
+			ExceptionLogger.log( logger, ex );
 			System.exit( -1 );
 		}
 	}
@@ -383,7 +369,6 @@ public class PlexNMTHelper implements Container {
 	private void playVideo( int time, String containerKey ) throws ClientProtocolException, IOException, ValidityException, IllegalStateException,
 			ParsingException, InterruptedException {
 		Video video = getVideoByKey( containerKey );
-		video.setCurrentTime( time );
 		nmt.play( video, time );
 	}
 
@@ -397,12 +382,11 @@ public class PlexNMTHelper implements Container {
 
 			for ( int i = 0; i < tracks.length; ++i ) {
 				Track track = tracks[i];
+				trackCache.add( track );
 				nmt.insertInQueue( track );
 				if ( track.getKey().equals( trackKey ) ) {
 					track.setCurrentTime( viewOffset );
 					trackIndex = i;
-				} else {
-					track.setCurrentTime( 0 );
 				}
 			}
 
@@ -427,27 +411,30 @@ public class PlexNMTHelper implements Container {
 		if ( replacementConfig.canRead() ) {
 			try {
 				Document doc = new Builder().build( replacementConfig );
-				Elements replacementElements = doc.getRootElement().getFirstChildElement( "playback" ).getFirstChildElement( "replace_policy" )
-						.getChildElements();
-				for ( int i = 0; i < replacementElements.size(); ++i ) {
-					Element replacement = replacementElements.get( i );
-					String from = replacement.getAttributeValue( "from" ).replace( '\\', '/' );
-					if ( !from.endsWith( "/" ) ) {
-						from = from + '/';
-					}
+				Element replacementPolicy = doc.getRootElement().getFirstChildElement( "playback" ).getFirstChildElement( "replace_policy" );
+				if ( replacementPolicy != null ) {
+					Elements replacementElements = replacementPolicy.getChildElements();
+					for ( int i = 0; i < replacementElements.size(); ++i ) {
+						Element replacement = replacementElements.get( i );
+						String originalFrom = replacement.getAttributeValue( "from" );
+						String from = originalFrom.replace( '\\', '/' );
+						if ( !from.endsWith( "/" ) ) {
+							from = from + '/';
+						}
 
-					String to = replacement.getAttributeValue( "to" );
-					if ( !to.endsWith( "/" ) ) {
-						to = to + '/';
-					}
+						String to = replacement.getAttributeValue( "to" );
+						if ( !to.endsWith( "/" ) ) {
+							to = to + '/';
+						}
 
-					String convertedTo = nmt.getConvertedPath( to );
-					if ( !convertedTo.endsWith( "/" ) ) {
-						convertedTo = convertedTo + '/';
-					}
-					logger.info( "Will map " + from + " to " + convertedTo );
+						String convertedTo = nmt.getConvertedPath( to );
+						if ( !convertedTo.endsWith( "/" ) ) {
+							convertedTo = convertedTo + '/';
+						}
+						logger.info( "Will map " + originalFrom + " to " + convertedTo );
 
-					replacements.add( new Replacement( from, convertedTo ) );
+						replacements.add( new Replacement( from, convertedTo ) );
+					}
 				}
 			} catch ( Exception e ) {
 				logger.severe( "Error reading config.xml: " + e.getMessage() );
@@ -468,8 +455,8 @@ public class PlexNMTHelper implements Container {
 	public void fix( Video video ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException, ParsingException,
 			InterruptedException {
 		logger.finer( "Processing video, key=" + video.getKey() + ", file=" + video.getFile() );
-		String file = video.getFile();
-		file = file.replace( '\\', '/' );
+		String originalFile = video.getFile();
+		String file = originalFile.replace( '\\', '/' );
 		for ( Replacement replacement : replacements ) {
 			if ( replacement.matches( file ) ) {
 				video.setFile( replacement.convert( file ) );
@@ -479,15 +466,16 @@ public class PlexNMTHelper implements Container {
 		if ( file.startsWith( "//" ) ) {
 			int slash = file.indexOf( '/', 2 );
 			slash = file.indexOf( '/', slash + 1 );
+			String originalShare = originalFile.substring( 0, slash + 1 );
 			String share = "smb:" + file.substring( 0, slash + 1 );
 			String convertedShare = nmt.getConvertedPath( share );
 			if ( !convertedShare.endsWith( "/" ) ) {
 				convertedShare = convertedShare + '/';
 			}
 			video.setFile( convertedShare + file.substring( slash + 1 ) );
+			logger.info( "Adding replacement of \"" + originalShare + "\" to \"" + convertedShare + "\"" );
+			replacements.add( new Replacement( originalShare.replace( '\\', '/' ), convertedShare ) );
 		} else {
-			logger.warning( "Video \"" + video.getTitle() + "\" will be played using HTTP streaming!" );
-			logger.finer( video.getHttpFile() );
 			video.setFile( video.getHttpFile() );
 		}
 	}

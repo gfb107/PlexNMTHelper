@@ -40,6 +40,10 @@ public class TrackCache {
 		map = tempMap;
 	}
 
+	public void add( Track track ) {
+		map.put( track.getFile(), track );
+	}
+
 	public Track get( String path ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException, ParsingException {
 		Track track = map.get( path );
 
