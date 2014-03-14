@@ -50,6 +50,11 @@ public class VideoCache {
 		logger.info( "Found " + videos.size() + " videos" );
 	}
 
+	public void add( Video video ) {
+		pathMap.put( video.getPlayFile(), video );
+		keyMap.put( video.getKey(), video );
+	}
+
 	private void updateGuid( Video video ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException, ParsingException {
 		if ( video != null && video.getGuid() == null ) {
 			helper.getServer().updateVideo( video );

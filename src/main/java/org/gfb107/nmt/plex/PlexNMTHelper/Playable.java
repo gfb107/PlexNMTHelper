@@ -15,6 +15,7 @@ public abstract class Playable {
 	private String ratingKey;
 	private String title;
 	private String file;
+	private String playFile;
 	private int duration;
 	private int currentTime;
 
@@ -40,6 +41,14 @@ public abstract class Playable {
 
 	public void setFile( String file ) {
 		this.file = file;
+	}
+
+	public String getPlayFile() {
+		return playFile;
+	}
+
+	public void setPlayFile( String playFile ) {
+		this.playFile = playFile;
 	}
 
 	public int getDuration() {

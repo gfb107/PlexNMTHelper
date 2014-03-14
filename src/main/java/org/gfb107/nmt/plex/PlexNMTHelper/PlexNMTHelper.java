@@ -369,6 +369,9 @@ public class PlexNMTHelper implements Container {
 	private void playVideo( int time, String containerKey ) throws ClientProtocolException, IOException, ValidityException, IllegalStateException,
 			ParsingException, InterruptedException {
 		Video video = getVideoByKey( containerKey );
+		String playFile = nmt.getConvertedPath( video.getFile() );
+		video.setPlayFile( playFile );
+		videoCache.add( video );
 		nmt.play( video, time );
 	}
 
@@ -415,25 +418,28 @@ public class PlexNMTHelper implements Container {
 				if ( replacementPolicy != null ) {
 					Elements replacementElements = replacementPolicy.getChildElements();
 					for ( int i = 0; i < replacementElements.size(); ++i ) {
-						Element replacement = replacementElements.get( i );
-						String originalFrom = replacement.getAttributeValue( "from" );
+						Element replacementElement = replacementElements.get( i );
+						String originalFrom = replacementElement.getAttributeValue( "from" );
 						String from = originalFrom.replace( '\\', '/' );
 						if ( !from.endsWith( "/" ) ) {
 							from = from + '/';
 						}
 
-						String to = replacement.getAttributeValue( "to" );
+						String to = replacementElement.getAttributeValue( "to" );
 						if ( !to.endsWith( "/" ) ) {
 							to = to + '/';
 						}
+
+						Replacement replacement = new Replacement( to, from );
 
 						String convertedTo = nmt.getConvertedPath( to );
 						if ( !convertedTo.endsWith( "/" ) ) {
 							convertedTo = convertedTo + '/';
 						}
-						logger.info( "Will map " + originalFrom + " to " + convertedTo );
 
-						replacements.add( new Replacement( from, convertedTo ) );
+						replacement.setPlayTo( convertedTo );
+
+						replacements.add( replacement );
 					}
 				}
 			} catch ( Exception e ) {
@@ -467,14 +473,10 @@ public class PlexNMTHelper implements Container {
 			int slash = file.indexOf( '/', 2 );
 			slash = file.indexOf( '/', slash + 1 );
 			String originalShare = originalFile.substring( 0, slash + 1 );
-			String share = "smb:" + file.substring( 0, slash + 1 );
-			String convertedShare = nmt.getConvertedPath( share );
-			if ( !convertedShare.endsWith( "/" ) ) {
-				convertedShare = convertedShare + '/';
-			}
-			video.setFile( convertedShare + file.substring( slash + 1 ) );
-			logger.info( "Adding replacement of \"" + originalShare + "\" to \"" + convertedShare + "\"" );
-			replacements.add( new Replacement( originalShare.replace( '\\', '/' ), convertedShare ) );
+			String newShare = "smb:" + file.substring( 0, slash + 1 );
+			video.setFile( newShare + file.substring( slash + 1 ) );
+			logger.info( "Adding replacement of \"" + originalShare + "\" to \"" + newShare + "\"" );
+			replacements.add( new Replacement( originalShare.replace( '\\', '/' ), newShare ) );
 		} else {
 			video.setFile( video.getHttpFile() );
 		}

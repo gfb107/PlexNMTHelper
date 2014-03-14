@@ -159,20 +159,22 @@ public class PlexServer {
 		return new Video( key, ratingKey, title, guid, duration, file, httpFile );
 	}
 
-	private Track getTrack( Element track ) {
-		String ratingKey = track.getAttributeValue( "ratingKey" );
-		String key = track.getAttributeValue( "key" );
-		String title = track.getAttributeValue( "title" );
-		String parentKey = track.getAttributeValue( "parentKey" );
+	private Track getTrack( Element trackElement ) {
+		String ratingKey = trackElement.getAttributeValue( "ratingKey" );
+		String key = trackElement.getAttributeValue( "key" );
+		String title = trackElement.getAttributeValue( "title" );
+		String parentKey = trackElement.getAttributeValue( "parentKey" );
 		int duration = 0;
-		String temp = track.getAttributeValue( "duration" );
+		String temp = trackElement.getAttributeValue( "duration" );
 		if ( temp != null ) {
 			duration = Integer.parseInt( temp );
 		}
-		Element part = track.getFirstChildElement( "Media" ).getFirstChildElement( "Part" );
-		String file = prefix + part.getAttributeValue( "key" );
+		Element part = trackElement.getFirstChildElement( "Media" ).getFirstChildElement( "Part" );
+		String file = part.getAttributeValue( "key" );
 
-		return new Track( parentKey, key, ratingKey, title, file, duration );
+		Track track = new Track( parentKey, key, ratingKey, title, file, duration );
+		track.setPlayFile( prefix + file );
+		return track;
 	}
 
 	public Track[] getTracks( String containerKey ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException,

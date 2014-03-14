@@ -106,13 +106,13 @@ public class NetworkedMediaTank {
 
 	public void play( Video video, int time ) throws ClientProtocolException, ValidityException, IllegalStateException, UnsupportedEncodingException,
 			IOException, ParsingException, InterruptedException {
-		sendCommand( "playback", "start_vod", fix( video.getTitle() ), fix( video.getFile() ).replace( "%2F", "/" ), "show",
+		sendCommand( "playback", "start_vod", fix( video.getTitle() ), fix( video.getPlayFile() ).replace( "%2F", "/" ), "show",
 				Integer.toString( time / 1000 ) );
 	}
 
 	public void insertInQueue( Track track ) throws ClientProtocolException, ValidityException, IllegalStateException, UnsupportedEncodingException,
 			IOException, ParsingException, InterruptedException {
-		sendCommand( "playback", "insert_aod_queue", fix( track.getTitle() ), track.getFile(), "show" );
+		sendCommand( "playback", "insert_aod_queue", fix( track.getTitle() ), track.getPlayFile(), "show" );
 	}
 
 	public String getQueueSongTitle( String fullPath ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException,
@@ -136,7 +136,7 @@ public class NetworkedMediaTank {
 
 	public String getConvertedPath( String path ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException,
 			ParsingException, InterruptedException {
-		Element result = sendCommand( "file_operation", "list_user_storage_file", path, "0", "0", "false", "false", "false", "" );
+		Element result = sendCommand( "file_operation", "list_user_storage_file", fix( path ), "0", "0", "false", "false", "false", "" );
 		if ( result.getFirstChildElement( "returnValue" ).getValue().equals( "0" ) ) {
 			return result.getFirstChildElement( "response" ).getFirstChildElement( "convertPath" ).getValue();
 		}
