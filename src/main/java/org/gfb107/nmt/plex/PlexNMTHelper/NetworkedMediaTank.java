@@ -136,6 +136,10 @@ public class NetworkedMediaTank {
 
 	public String getConvertedPath( String path ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException,
 			ParsingException, InterruptedException {
+		if ( path.startsWith( "http://" ) || path.startsWith( "/opt/sybhttpd/localhost.drives/NETWORK_SHARE/" )
+				|| path.startsWith( "file:///opt/sybhttpd/localhost.drives/NETWORK_SHARE/" ) ) {
+			return path;
+		}
 		Element result = sendCommand( "file_operation", "list_user_storage_file", fix( path ), "0", "0", "false", "false", "false", "" );
 		if ( result.getFirstChildElement( "returnValue" ).getValue().equals( "0" ) ) {
 			return result.getFirstChildElement( "response" ).getFirstChildElement( "convertPath" ).getValue();

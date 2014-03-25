@@ -13,7 +13,17 @@ It can be controlled using
 
 History
 =======
-Version 1.0.4
+Version 1.0.7
+	Don't use list_user_storage_file to convert file paths that are already in NMT format
+	
+Version 1.0.6
+	Add config.xml logging
+	
+Version 1.0.5
+	Improvements for iOS support
+	Fix config.xml issues
+
+	Version 1.0.4
 	Remove discoveryPort configuration parameter. Only one port is needed.
 	Clean up exception logging.
 	If there is no replacement defined in config.xml for videos files that start with \\ or //, automatically create one 

@@ -407,6 +407,9 @@ public class PlexNMTHelper implements Container {
 			ParsingException, InterruptedException {
 		Video video = getVideoByKey( containerKey );
 		String playFile = nmt.getConvertedPath( video.getFile() );
+		if ( playFile == null ) {
+			playFile = video.getHttpFile();
+		}
 		video.setPlayFile( playFile );
 		videoCache.add( video );
 		nmt.play( video, time );
@@ -463,11 +466,10 @@ public class PlexNMTHelper implements Container {
 						String to = replacementElement.getAttributeValue( "to" );
 
 						Replacement replacement = new Replacement( from, to );
-						logger.config( "Adding replacement " + replacement );
+						replacements.add( replacement );
+						logger.config( "Added replacement " + replacement );
 
 						replacement.setPlayTo( nmt.getConvertedPath( replacement.getTo() ) );
-
-						replacements.add( replacement );
 					}
 				}
 			} catch ( Exception e ) {
