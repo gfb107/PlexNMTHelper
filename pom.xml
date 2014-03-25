@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>PlexNMTHelper</groupId>
 	<artifactId>PlexNMTHelper</artifactId>
-	<version>1.0.4</version>
+	<version>1.0.5</version>
 	<name>Plex NMT Helper</name>
 
 	<build>
@@ -20,7 +20,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
-				<version>2.4</version>
+				<version>2.2</version>
 				<configuration>
 					<archive>
 						<manifest>
@@ -67,6 +67,12 @@
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpclient</artifactId>
 			<version>4.3.2</version>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
+			<version>4.11</version>
 		</dependency>
 	</dependencies>
 </project>
