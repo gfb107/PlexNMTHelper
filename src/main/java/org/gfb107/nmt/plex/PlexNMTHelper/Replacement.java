@@ -6,11 +6,20 @@ public class Replacement {
 	private String playTo;
 
 	public Replacement( String from, String to ) {
+		if ( !from.endsWith( "/" ) ) {
+			from = from + '/';
+		}
 		this.from = from;
+		if ( !to.endsWith( "/" ) ) {
+			to = to + '/';
+		}
 		this.to = to;
 	}
 
 	public void setPlayTo( String playTo ) {
+		if ( !playTo.endsWith( "/" ) ) {
+			playTo = playTo + '/';
+		}
 		this.playTo = playTo;
 	}
 
@@ -24,5 +33,17 @@ public class Replacement {
 
 	public String convertPlay( String path ) {
 		return playTo + path.substring( from.length() );
+	}
+
+	public String getFrom() {
+		return from;
+	}
+
+	public String getTo() {
+		return to;
+	}
+
+	public String toString() {
+		return "from " + from + " to " + to;
 	}
 }

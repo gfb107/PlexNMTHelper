@@ -61,8 +61,8 @@ public class PlexNMTHelper implements Container {
 				fileName = args[0];
 			}
 
-			logger.config( "Using property file " + fileName );
 			File propertiesFile = new File( fileName );
+			logger.config( "Using property file " + propertiesFile.getAbsolutePath() );
 			if ( !propertiesFile.exists() ) {
 				logger.severe( "File " + propertiesFile + " wasn't found." );
 				copy( new File( "samples", "PlexNMTHelper.properties" ), new File( "PlexNMTHelper.properties" ) );
@@ -70,7 +70,7 @@ public class PlexNMTHelper implements Container {
 				return;
 			}
 			if ( !propertiesFile.canRead() ) {
-				logger.severe( "Unable to read " + propertiesFile );
+				logger.severe( "Unable to read " + propertiesFile.getAbsolutePath() );
 				return;
 			}
 
@@ -101,6 +101,7 @@ public class PlexNMTHelper implements Container {
 			temp = properties.getProperty( "replacementConfig" );
 			if ( temp == null ) {
 				logger.severe( "Missing property replacementConfig" );
+				return;
 			}
 			File replacementConfig = new File( temp );
 
@@ -447,6 +448,7 @@ public class PlexNMTHelper implements Container {
 
 	private void initReplacements( File replacementConfig ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException,
 			ParsingException, InterruptedException {
+		logger.config( "Reading " + replacementConfig.getAbsolutePath() );
 		if ( replacementConfig.canRead() ) {
 			try {
 				Document doc = new Builder().build( replacementConfig );
@@ -457,23 +459,13 @@ public class PlexNMTHelper implements Container {
 						Element replacementElement = replacementElements.get( i );
 						String originalFrom = replacementElement.getAttributeValue( "from" );
 						String from = originalFrom.replace( '\\', '/' );
-						if ( !from.endsWith( "/" ) ) {
-							from = from + '/';
-						}
 
 						String to = replacementElement.getAttributeValue( "to" );
-						if ( !to.endsWith( "/" ) ) {
-							to = to + '/';
-						}
 
 						Replacement replacement = new Replacement( from, to );
+						logger.config( "Adding replacement " + replacement );
 
-						String convertedTo = nmt.getConvertedPath( to );
-						if ( !convertedTo.endsWith( "/" ) ) {
-							convertedTo = convertedTo + '/';
-						}
-
-						replacement.setPlayTo( convertedTo );
+						replacement.setPlayTo( nmt.getConvertedPath( replacement.getTo() ) );
 
 						replacements.add( replacement );
 					}
@@ -512,8 +504,9 @@ public class PlexNMTHelper implements Container {
 			String originalShare = originalFile.substring( 0, slash + 1 );
 			String newShare = "smb:" + file.substring( 0, slash + 1 );
 			video.setFile( newShare + file.substring( slash + 1 ) );
-			logger.info( "Adding replacement of \"" + originalShare + "\" to \"" + newShare + "\"" );
-			replacements.add( new Replacement( originalShare.replace( '\\', '/' ), newShare ) );
+			Replacement replacement = new Replacement( originalShare.replace( '\\', '/' ), newShare );
+			logger.config( "Generated replacement " + replacement );
+			replacements.add( replacement );
 		} else {
 			video.setFile( video.getHttpFile() );
 		}
