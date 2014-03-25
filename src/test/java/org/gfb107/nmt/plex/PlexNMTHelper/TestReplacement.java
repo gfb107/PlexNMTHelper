@@ -11,7 +11,7 @@ public class TestReplacement {
 		Replacement replacement = new Replacement( "//Mini/Mounts/", "smb://Mini/Mounts" );
 		String path = "//Mini/Mounts/Movies/17 Again.mkv";
 		assert (replacement.matches( path ));
-		assertEquals( "smb://Mini/Mounts/Movies/17 again.mkv", replacement.convert( path ) );
+		assertEquals( "smb://Mini/Mounts/Movies/17 Again.mkv", replacement.convert( path ) );
 	}
 
 }
