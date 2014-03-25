@@ -1,6 +1,8 @@
 package org.gfb107.nmt.plex.PlexNMTHelper;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -10,6 +12,7 @@ import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.NetworkInterface;
 import java.net.UnknownHostException;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -60,6 +63,12 @@ public class PlexNMTHelper implements Container {
 
 			logger.config( "Using property file " + fileName );
 			File propertiesFile = new File( fileName );
+			if ( !propertiesFile.exists() ) {
+				logger.severe( "File " + propertiesFile + " wasn't found." );
+				copy( new File( "samples", "PlexNMTHelper.properties" ), new File( "PlexNMTHelper.properties" ) );
+				copy( new File( "samples", "config.xml" ), new File( "config.xml" ) );
+				return;
+			}
 			if ( !propertiesFile.canRead() ) {
 				logger.severe( "Unable to read " + propertiesFile );
 				return;
@@ -105,12 +114,12 @@ public class PlexNMTHelper implements Container {
 			server.setClientId( clientId );
 			server.setClientName( nmt.getName() );
 
+			PlexNMTHelper helper = new PlexNMTHelper( nmt, port, server );
+			helper.initReplacements( replacementConfig );
+
 			GDMAnnouncer announcer = new GDMAnnouncer( nmtName, clientId, port );
 			Thread announcerThread = new Thread( announcer );
 			announcerThread.start();
-
-			PlexNMTHelper helper = new PlexNMTHelper( nmt, port, server );
-			helper.initReplacements( replacementConfig );
 
 			@SuppressWarnings("resource")
 			Connection connection = new SocketConnection( new ContainerServer( helper ) );
@@ -123,6 +132,22 @@ public class PlexNMTHelper implements Container {
 		} catch ( Exception ex ) {
 			ExceptionLogger.log( logger, ex );
 			System.exit( -1 );
+		}
+	}
+
+	private static void copy( File source, File dest ) throws IOException {
+		if ( !dest.exists() ) {
+			logger.info( "Copying " + source + " to " + dest + ", please modify to match your setup." );
+			FileChannel inputChannel = null;
+			FileChannel outputChannel = null;
+			try {
+				inputChannel = new FileInputStream( source ).getChannel();
+				outputChannel = new FileOutputStream( dest ).getChannel();
+				outputChannel.transferFrom( inputChannel, 0, inputChannel.size() );
+			} finally {
+				inputChannel.close();
+				outputChannel.close();
+			}
 		}
 	}
 
@@ -194,10 +219,11 @@ public class PlexNMTHelper implements Container {
 		try {
 			body = response.getPrintStream();
 
+			response.setValue( "Access-Control-Allow-Origin", "*" );
 			response.setValue( "Connection", "close" );
 			response.setValue( "X-Plex-Client-Identifier", nmt.getMacAddress() );
-			response.setValue( "Server", "PlexNMTHelper" );
-			response.setContentType( "application/xml" );
+			// response.setValue( "Server", "PlexNMTHelper" );
+			response.setContentType( "text/xml" );
 
 			long time = System.currentTimeMillis();
 			response.setDate( "Date", time );
@@ -238,11 +264,10 @@ public class PlexNMTHelper implements Container {
 			logger.finer( entry.getKey() + "=" + entry.getValue() );
 		}
 		if ( fullPath.equals( "/resources" ) ) {
-			return "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<MediaContainer><Player platformVersion=\"2.00\" version=\"0.1\" protocolVersion=\"1\" machineIdentifier=\""
-					+ nmt.getMacAddress()
-					+ "\" protocolCapabilities=\"timeline,playback,navigation\" deviceClass=\"stb\" title=\""
-					+ nmt.getName()
-					+ "\" product=\"" + NetworkedMediaTank.productName + "\" /></MediaContainer>";
+			return "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<MediaContainer><Player title=\"" + nmt.getName()
+					+ "\" protocol=\"plex\" protocolVersion=\"1\" machineIdentifier=\"" + nmt.getMacAddress()
+					+ "\" protocolCapabilities=\"navigation,playback,timeline\" deviceClass=\"stb\" product=\"" + NetworkedMediaTank.productName
+					+ "\" /></MediaContainer>";
 		} else if ( directory.equals( "/player/timeline/" ) ) {
 			int port = query.getInteger( "port" );
 			String commandId = query.get( "commandID" );
@@ -276,7 +301,9 @@ public class PlexNMTHelper implements Container {
 			String key = query.get( "key" );
 			String clientId = request.getValue( "X-Plex-Client-Identifier" );
 			updateSubscriber( clientId, commandId );
-			if ( type.equals( "video" ) ) {
+			if ( type == null ) {
+				play( offset, containerKey, key );
+			} else if ( type.equals( "video" ) ) {
 				playVideo( offset, key );
 			} else if ( type.equals( "music" ) ) {
 				playAudio( offset, containerKey, key );
@@ -366,6 +393,15 @@ public class PlexNMTHelper implements Container {
 		return null;
 	}
 
+	private void play( int time, String containerKey, String key ) throws ClientProtocolException, ValidityException, IllegalStateException,
+			IOException, ParsingException, InterruptedException {
+		if ( containerKey.equals( key ) ) {
+			playVideo( time, containerKey );
+		} else {
+			playAudio( time, containerKey, key );
+		}
+	}
+
 	private void playVideo( int time, String containerKey ) throws ClientProtocolException, IOException, ValidityException, IllegalStateException,
 			ParsingException, InterruptedException {
 		Video video = getVideoByKey( containerKey );
@@ -430,7 +466,7 @@ public class PlexNMTHelper implements Container {
 							to = to + '/';
 						}
 
-						Replacement replacement = new Replacement( to, from );
+						Replacement replacement = new Replacement( from, to );
 
 						String convertedTo = nmt.getConvertedPath( to );
 						if ( !convertedTo.endsWith( "/" ) ) {
@@ -443,7 +479,7 @@ public class PlexNMTHelper implements Container {
 					}
 				}
 			} catch ( Exception e ) {
-				logger.severe( "Error reading config.xml: " + e.getMessage() );
+				ExceptionLogger.log( logger, e );
 			}
 		}
 
@@ -455,6 +491,7 @@ public class PlexNMTHelper implements Container {
 		trackCache = new TrackCache( this );
 
 		nowPlayingMonitor = new NowPlayingMonitor( this, nmt );
+		Thread.sleep( 2000 );
 		new Thread( nowPlayingMonitor ).start();
 	}
 
