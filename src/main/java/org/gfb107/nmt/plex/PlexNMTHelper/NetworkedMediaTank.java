@@ -23,7 +23,7 @@ public class NetworkedMediaTank {
 	private String address;
 	private String name;
 
-	public static final String productName = "Networked Media Tank";
+	public static final String productName = "Plex NMT Helper";
 
 	private String prefix;
 

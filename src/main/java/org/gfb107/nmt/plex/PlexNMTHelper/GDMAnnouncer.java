@@ -21,11 +21,11 @@ public class GDMAnnouncer implements Runnable {
 		StringBuilder sb = new StringBuilder( "HELLO * HTTP/1.0\n" );
 		sb.append( "Name: " + name + "\n" );
 		sb.append( "Port: " + port + "\n" );
-		sb.append( "Product: Networked Media Tank Plex Helper\n" );
+		sb.append( "Product: " + NetworkedMediaTank.productName + "\n" );
 		sb.append( "Content-Type: plex/media-player\n" );
 		sb.append( "Protocol: plex\n" );
 		sb.append( "Protocol-Version: 1\n" );
-		sb.append( "Protocol-Capabilities: timeline,playback,navigation\n" );
+		sb.append( "Protocol-Capabilities: navigation,playback,timeline\n" );
 		sb.append( "Version: 0.1\n" );
 		sb.append( "Resource-Identifier: " + clientId + "\n" );
 		sb.append( "Device-Class: stb\n" );

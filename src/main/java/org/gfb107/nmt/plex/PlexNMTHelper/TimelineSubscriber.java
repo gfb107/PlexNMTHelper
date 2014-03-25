@@ -120,7 +120,7 @@ public class TimelineSubscriber {
 
 		Element response = null;
 
-		if ( entity != null && entity.getContentType().getValue().equals( "application/xml" ) ) {
+		if ( entity != null && entity.getContentType() != null && entity.getContentType().getValue().equals( "application/xml" ) ) {
 			response = new Builder().build( entity.getContent() ).getRootElement();
 		} else {
 			StatusLine statusLine = httpResponse.getStatusLine();
@@ -207,7 +207,7 @@ public class TimelineSubscriber {
 		Element container = new Element( "MediaContainer" );
 
 		container.addAttribute( new Attribute( "commandID", commandId ) );
-		container.addAttribute( new Attribute( "location", "navigation" ) );
+		container.addAttribute( new Attribute( "location", "fullScreenVideo" ) );
 
 		container.appendChild( musicTimeline );
 		container.appendChild( photoTimeline );
