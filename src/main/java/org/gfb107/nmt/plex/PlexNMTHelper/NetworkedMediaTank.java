@@ -110,6 +110,11 @@ public class NetworkedMediaTank {
 				Integer.toString( time / 1000 ) );
 	}
 
+	public void play( Track track, int time ) throws ClientProtocolException, ValidityException, IllegalStateException, UnsupportedEncodingException,
+			IOException, ParsingException, InterruptedException {
+		sendCommand( "playback", "start_aod", fix( track.getTitle() ), track.getPlayFile(), "show", Integer.toString( time / 1000 ) );
+	}
+
 	public void insertInQueue( Track track ) throws ClientProtocolException, ValidityException, IllegalStateException, UnsupportedEncodingException,
 			IOException, ParsingException, InterruptedException {
 		sendCommand( "playback", "insert_aod_queue", fix( track.getTitle() ), track.getPlayFile(), "show" );
@@ -136,8 +141,7 @@ public class NetworkedMediaTank {
 
 	public String getConvertedPath( String path ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException,
 			ParsingException, InterruptedException {
-		if ( path.startsWith( "http://" ) || path.startsWith( "/opt/sybhttpd/localhost.drives/NETWORK_SHARE/" )
-				|| path.startsWith( "file:///opt/sybhttpd/localhost.drives/NETWORK_SHARE/" ) ) {
+		if ( path.startsWith( "http://" ) || path.contains( "/opt/sybhttpd/localhost.drives/" ) ) {
 			return path;
 		}
 		Element result = sendCommand( "file_operation", "list_user_storage_file", fix( path ), "0", "0", "false", "false", "false", "" );

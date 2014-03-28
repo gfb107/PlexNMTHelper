@@ -90,7 +90,7 @@ public class TimelineSubscriber {
 
 		Element photoElement = generateEmptyTimeline( "photo" );
 
-		Element videoElement = generateTimeline( video, state );
+		Element videoElement = state.equals( "stopped" ) ? generateEmptyTimeline( "video" ) : generateTimeline( video, state );
 
 		return updateTimeline( audioElement, photoElement, videoElement );
 	}
@@ -195,7 +195,7 @@ public class TimelineSubscriber {
 	private Element generateEmptyTimeline( String type ) {
 		Element timeline = new Element( "Timeline" );
 		timeline.addAttribute( new Attribute( "location", "navigation" ) );
-		timeline.addAttribute( new Attribute( "seekRange", "0-0" ) );
+		// timeline.addAttribute( new Attribute( "seekRange", "0-0" ) );
 		timeline.addAttribute( new Attribute( "state", "stopped" ) );
 		timeline.addAttribute( new Attribute( "time", "0" ) );
 		timeline.addAttribute( new Attribute( "type", type ) );
@@ -207,7 +207,12 @@ public class TimelineSubscriber {
 		Element container = new Element( "MediaContainer" );
 
 		container.addAttribute( new Attribute( "commandID", commandId ) );
-		container.addAttribute( new Attribute( "location", "fullScreenVideo" ) );
+		String location = "fullScreenVideo";
+		if ( musicTimeline.getAttributeValue( "location" ).equals( "navigation" )
+				&& videoTimeline.getAttributeValue( "location" ).equals( "navigation" ) ) {
+			location = "navigation";
+		}
+		container.addAttribute( new Attribute( "location", location ) );
 
 		container.appendChild( musicTimeline );
 		container.appendChild( photoTimeline );

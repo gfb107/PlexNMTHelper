@@ -159,7 +159,7 @@ public class PlexServer {
 		return new Video( key, ratingKey, title, guid, duration, file, httpFile );
 	}
 
-	private Track getTrack( Element trackElement ) {
+	public Track getTrack( Element trackElement ) {
 		String ratingKey = trackElement.getAttributeValue( "ratingKey" );
 		String key = trackElement.getAttributeValue( "key" );
 		String title = trackElement.getAttributeValue( "title" );

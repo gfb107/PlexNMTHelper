@@ -33,7 +33,7 @@ public class TrackCache {
 		Map< String, Track > tempMap = new HashMap< String, Track >( size );
 
 		for ( Track track : tracks ) {
-			tempMap.put( track.getFile(), track );
+			tempMap.put( track.getPlayFile(), track );
 		}
 
 		logger.info( "Found " + tracks.size() + " tracks" );

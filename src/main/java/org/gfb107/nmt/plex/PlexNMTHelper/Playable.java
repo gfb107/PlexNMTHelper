@@ -23,6 +23,10 @@ public abstract class Playable {
 		return containerKey;
 	}
 
+	public void setContainerKey( String containerKey ) {
+		this.containerKey = containerKey;
+	}
+
 	public String getKey() {
 		return key;
 	}
