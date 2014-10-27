@@ -19,25 +19,24 @@ public class GDMDiscovery {
 	private static final int discoveryPort = 32414;
 	private static final String discoveryMessage = "M-SEARCH * HTTP/1.1\r\n\r\n";
 
-	private int port = 0;
-
-	public GDMDiscovery( int port ) {}
-
 	public PlexServer discover() throws ValidityException, IllegalStateException, ParsingException {
 
 		DatagramSocket discoverySocket = null;
 		try {
 			InetAddress gdmAddress = InetAddress.getByName( broadcastAddress );
 
-			discoverySocket = new DatagramSocket( port );
+			discoverySocket = new DatagramSocket();
 
 			DatagramPacket discoveryPacket = new DatagramPacket( discoveryMessage.getBytes(), discoveryMessage.length(), gdmAddress, discoveryPort );
+
+			logger.info( "Sending discovery packet" );
 
 			discoverySocket.send( discoveryPacket );
 
 			byte[] buf = new byte[4 * 1024];
 			DatagramPacket responsePacket = new DatagramPacket( buf, buf.length );
 
+			logger.info( "Waiting for discovery response" );
 			discoverySocket.receive( responsePacket );
 
 			String serverAddress = responsePacket.getAddress().getHostAddress();

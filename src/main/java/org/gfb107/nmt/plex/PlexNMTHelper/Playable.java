@@ -1,7 +1,9 @@
 package org.gfb107.nmt.plex.PlexNMTHelper;
 
-public abstract class Playable {
-	public Playable( String containerKey, String key, String ratingKey, String title, String file, int duration ) {
+public class Playable {
+	protected Playable( String type, String location, String containerKey, String key, String ratingKey, String title, String file, int duration ) {
+		this.type = type;
+		this.location = location;
 		this.containerKey = containerKey;
 		this.key = key;
 		this.ratingKey = ratingKey;
@@ -18,6 +20,7 @@ public abstract class Playable {
 	private String playFile;
 	private int duration;
 	private int currentTime;
+	private String state;
 
 	public String getContainerKey() {
 		return containerKey;
@@ -71,7 +74,23 @@ public abstract class Playable {
 		this.currentTime = time;
 	}
 
-	public abstract String getLocation();
+	private String location;
 
-	public abstract String getType();
+	public final String getLocation() {
+		return location;
+	}
+
+	private String type;
+
+	public final String getType() {
+		return type;
+	}
+
+	public void setState( String state ) {
+		this.state = state;
+	}
+
+	public String getState() {
+		return state;
+	}
 }

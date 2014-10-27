@@ -6,11 +6,10 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.MalformedURLException;
 import java.net.NetworkInterface;
+import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -79,6 +78,8 @@ public class PlexNMTHelper implements Container {
 			properties.load( reader );
 			reader.close();
 
+			InetAddress myAddress = PlexNMTHelper.getLocalHostLANAddress();
+
 			String nmtAddress = properties.getProperty( "nmtAddress" );
 			if ( nmtAddress == null ) {
 				logger.severe( "Missing property nmtAddress" );
@@ -107,18 +108,19 @@ public class PlexNMTHelper implements Container {
 
 			NetworkedMediaTank nmt = new NetworkedMediaTank( nmtAddress, nmtName );
 
-			GDMDiscovery discovery = new GDMDiscovery( port );
+			GDMDiscovery discovery = new GDMDiscovery();
 			PlexServer server = discovery.discover();
 
-			String clientId = nmt.getMacAddress();
+			String clientId = "pch-" + nmt.getMacAddress().replace( ':', '-' );
 
 			server.setClientId( clientId );
 			server.setClientName( nmt.getName() );
 
-			PlexNMTHelper helper = new PlexNMTHelper( nmt, port, server );
+			PlexNMTHelper helper = new PlexNMTHelper( nmt, myAddress, port, server );
 			helper.initReplacements( replacementConfig );
+			helper.setClientId( clientId );
 
-			GDMAnnouncer announcer = new GDMAnnouncer( nmtName, clientId, port );
+			GDMAnnouncer announcer = new GDMAnnouncer( nmtName, clientId, myAddress, port );
 			Thread announcerThread = new Thread( announcer );
 			announcerThread.start();
 
@@ -152,6 +154,7 @@ public class PlexNMTHelper implements Container {
 		}
 	}
 
+	private InetAddress myAddress;
 	private int listenPort = -1;
 
 	private NetworkedMediaTank nmt;
@@ -162,21 +165,20 @@ public class PlexNMTHelper implements Container {
 	private Map< String, String > playbackMap = new HashMap< String, String >();
 	private Map< String, TimelineSubscriber > subscribers = new LinkedHashMap< String, TimelineSubscriber >();
 
-	private String myAddress = getLocalHostLANAddress().getHostAddress();
-
 	private CloseableHttpClient client = HttpClients.createDefault();
 
 	private Element successResponse = null;
 
 	private NowPlayingMonitor nowPlayingMonitor = null;
 
-	public PlexNMTHelper( NetworkedMediaTank nmt, int port, PlexServer server ) throws IOException, ValidityException, IllegalStateException,
-			ParsingException, InterruptedException {
+	public PlexNMTHelper( NetworkedMediaTank nmt, InetAddress address, int port, PlexServer server ) throws IOException, ValidityException,
+			IllegalStateException, ParsingException, InterruptedException {
 
 		this.nmt = nmt;
 		this.server = server;
 		server.setClient( client );
 
+		myAddress = address;
 		listenPort = port;
 
 		navigationMap.put( "moveRight", "right" );
@@ -197,6 +199,12 @@ public class PlexNMTHelper implements Container {
 		successResponse = new Element( "Response" );
 		successResponse.addAttribute( new Attribute( "code", "200" ) );
 		successResponse.addAttribute( new Attribute( "status", "OK" ) );
+	}
+
+	private String clientId = null;
+
+	public void setClientId( String clientId ) {
+		this.clientId = clientId;
 	}
 
 	public NetworkedMediaTank getNmt() {
@@ -220,22 +228,33 @@ public class PlexNMTHelper implements Container {
 		try {
 			body = response.getPrintStream();
 
-			response.setValue( "Access-Control-Allow-Origin", "*" );
+			response.setDate( "Date", System.currentTimeMillis() );
+			response.setValue( "Server", "Plex" );
 			response.setValue( "Connection", "close" );
-			response.setValue( "X-Plex-Client-Identifier", nmt.getMacAddress() );
-			// response.setValue( "Server", "PlexNMTHelper" );
-			response.setContentType( "text/xml" );
+			response.setContentType( "application/xml" );
+			response.setValue( "Accept-Ranges", "bytes" );
+			response.setValue( "Access-Control-Allow-Origin", "*" );
+			response.setValue(
+					"Access-Control-Allow-Headers",
+					"x-plex-version, x-plex-platform-version, x-plex-username, x-plex-client-identifier, x-plex-target-client-identifier, x-plex-device-name, x-plex-platform, x-plex-product, accept, x-plex-device" );
+			response.setValue( "Access-Control-Allow-Methods", "POST, GET, OPTIONS, HEAD" );
+			response.setInteger( "Access-Control-Max-Age", 1209600 );
+			response.setValue( "X-Plex-Client-Identifier", clientId );
+			response.setValue( "Access-Control-Expose-Headers", "X-Plex-Client-Identifier" );
 
-			long time = System.currentTimeMillis();
-			response.setDate( "Date", time );
-
-			String message = process( request, response );
+			String message = null;
+			if ( request.getMethod().equals( "OPTIONS" ) ) {
+				message = "";
+			} else {
+				message = process( request, response );
+			}
 
 			if ( message == null ) {
-				message = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><Response code=\"200\" status=\"OK\" />";
-			} else {
-				logger.finer( "Responding with: " + message );
+				message = "";
+				// message =
+				// "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><Response code=\"200\" status=\"OK\" />";
 			}
+			logger.finer( "Responding with: " + message );
 
 			response.setContentLength( message.length() );
 			body.print( message );
@@ -251,22 +270,32 @@ public class PlexNMTHelper implements Container {
 		body.close();
 	}
 
+	private PlayQueue queue = null;
+
+	public PlayQueue getQueue() {
+		return queue;
+	}
+
 	private String process( Request request, Response response ) throws ClientProtocolException, ValidityException, IllegalStateException,
-			IOException, ParsingException, InterruptedException {
+			IOException, ParsingException, InterruptedException, URISyntaxException {
 		Path path = request.getPath();
 		String fullPath = path.getPath();
 		String directory = path.getDirectory();
 		String name = path.getName();
+		String method = request.getMethod();
 
 		Query query = request.getQuery();
 
-		logger.fine( "Processing request for " + fullPath );
+		logger.fine( "Processing " + method + " request for " + fullPath );
 		for ( Map.Entry< String, String > entry : query.entrySet() ) {
 			logger.finer( entry.getKey() + "=" + entry.getValue() );
 		}
+		for ( String headerName : request.getNames() ) {
+			logger.finer( headerName + ": " + request.getValue( headerName ) );
+		}
 		if ( fullPath.equals( "/resources" ) ) {
 			return "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<MediaContainer><Player title=\"" + nmt.getName()
-					+ "\" protocol=\"plex\" protocolVersion=\"1\" machineIdentifier=\"" + nmt.getMacAddress()
+					+ "\" protocol=\"plex\" protocolVersion=\"1\" machineIdentifier=\"" + clientId
 					+ "\" protocolCapabilities=\"navigation,playback,timeline\" deviceClass=\"stb\" product=\"" + NetworkedMediaTank.productName
 					+ "\" /></MediaContainer>";
 		} else if ( directory.equals( "/player/timeline/" ) ) {
@@ -277,22 +306,24 @@ public class PlexNMTHelper implements Container {
 
 			if ( name.equals( "subscribe" ) ) {
 				TimelineSubscriber subscriber = new TimelineSubscriber( commandId, address, port, server );
-				subscriber.setClient( nmt.getMacAddress(), nmt.getName(), myAddress, listenPort );
+				subscriber.setClient( this.clientId, nmt.getName() );
 				subscriber.setHttpClient( client );
 				subscribers.put( clientId, subscriber );
 			} else if ( name.equals( "unsubscribe" ) ) {
 				subscribers.remove( clientId );
+			} else if ( name.equals( "poll" ) ) {
+				TimelineSubscriber subscriber = new TimelineSubscriber( commandId, "", 0, server );
+				subscriber.setClient( this.clientId, nmt.getName() );
+				Video video = nowPlayingMonitor.getLastVideo();
+				Element videoTimeline = (video == null ? subscriber.generateEmptyTimeline( "video" ) : subscriber.generateTimeline( video ));
+				Track track = nowPlayingMonitor.getLastTrack();
+				Element audioTimeline = (track == null ? subscriber.generateEmptyTimeline( "music" ) : subscriber.generateTimeline( track ));
+				Element photoTimeline = subscriber.generateEmptyTimeline( "photo" );
+				Document doc = subscriber.generateTimelineContainer( audioTimeline, photoTimeline, videoTimeline );
+				return doc.toXML();
 			}
 			return null;
-		} else if ( fullPath.equals( "/player/application/playMedia" ) ) {
-			// From web client
-			int viewOffset = query.getInteger( "viewOffset" ) / 1000;
-			String file = query.get( "path" );
-			nmt.sendKey( "stop", "playback" );
-			playVideo( viewOffset, file, null );
-			return null;
 		} else if ( fullPath.equals( "/player/playback/playMedia" ) ) {
-			// from mobile client
 			nmt.sendKey( "stop", "playback" );
 
 			int offset = query.getInteger( "offset" );
@@ -300,15 +331,11 @@ public class PlexNMTHelper implements Container {
 			String commandId = query.get( "commandID" );
 			String containerKey = query.get( "containerKey" );
 			String key = query.get( "key" );
-			String clientId = request.getValue( "X-Plex-Client-Identifier" );
+
+			// String clientId = request.getValue( "X-Plex-Client-Identifier" );
 			TimelineSubscriber subscriber = updateSubscriber( clientId, commandId );
-			if ( type == null ) {
-				play( offset, containerKey, key, subscriber );
-			} else if ( type.equals( "video" ) ) {
-				playVideo( offset, key, subscriber );
-			} else if ( type.equals( "music" ) ) {
-				playAudio( offset, containerKey, key, subscriber );
-			}
+			queue = server.getPlayQueue( containerKey );
+			play( offset, subscriber );
 			return null;
 		} else if ( directory.equals( "/player/playback/" ) ) {
 			String type = query.get( "type" );
@@ -342,11 +369,15 @@ public class PlexNMTHelper implements Container {
 				}
 				return null;
 			} else {
+				if ( name.equals( "stop" ) ) {
+					queue = null;
+				}
 				nmt.sendKey( playbackMap.get( name ), "playback" );
 				return null;
 			}
 		} else if ( directory.equals( "/player/navigation/" ) ) {
-			return nmt.sendKey( navigationMap.get( name ), "flashlite" );
+			String rc = nmt.sendKey( navigationMap.get( name ), "flashlite" );
+			return rc;
 		} else {
 			logger.warning( "Don't know what to do for " + fullPath );
 			response.setStatus( Status.NOT_IMPLEMENTED );
@@ -362,27 +393,27 @@ public class PlexNMTHelper implements Container {
 		return subscriber;
 	}
 
-	public void updateTimeline( Track audio, String state ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException,
-			ParsingException {
-		server.updateTimeline( audio, state );
+	public void updateTimeline( Track audio ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException,
+			ParsingException, URISyntaxException {
+		server.updateTimeline( audio );
 
 		for ( TimelineSubscriber subscriber : subscribers.values() ) {
-			subscriber.updateTimeline( audio, state );
+			subscriber.updateTimeline( audio );
 		}
 	}
 
-	public void updateTimeline( Video video, String state ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException,
-			ParsingException {
-		server.updateTimeline( video, state );
+	public void updateTimeline( Video video ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException,
+			ParsingException, URISyntaxException {
+		server.updateTimeline( video );
 
 		for ( TimelineSubscriber subscriber : subscribers.values() ) {
 
-			subscriber.updateTimeline( video, state );
+			subscriber.updateTimeline( video );
 		}
 	}
 
 	private String seek( int offset, String type ) throws ClientProtocolException, IOException, ValidityException, IllegalStateException,
-			ParsingException, InterruptedException {
+			ParsingException, InterruptedException, URISyntaxException {
 		int seconds = offset % 60;
 		offset = offset / 60;
 		int minutes = offset % 60;
@@ -395,91 +426,25 @@ public class PlexNMTHelper implements Container {
 		return null;
 	}
 
-	private void play( int time, String containerKey, String key, TimelineSubscriber subscriber ) throws ClientProtocolException, ValidityException,
-			IllegalStateException, IOException, ParsingException, InterruptedException {
-		Element element = server.sendCommand( containerKey );
-		Elements children = element.getChildElements();
-		for ( int i = 0; i < children.size(); ++i ) {
-			Element child = children.get( i );
-			String childKey = child.getAttributeValue( "key" );
-			if ( childKey.equals( key ) ) {
-				if ( child.getLocalName().equals( "Video" ) ) {
-					Video video = fix( server.getVideo( child ) );
-					video.setContainerKey( containerKey );
-					play( video, time, subscriber );
-				}
-				if ( child.getLocalName().equals( "Track" ) ) {
-					Track track = server.getTrack( child );
-					track.setContainerKey( containerKey );
-					play( track, time, subscriber );
-				}
-				break;
-			}
-		}
-	}
-
-	private void play( Video video, int time, TimelineSubscriber subscriber ) throws ClientProtocolException, ValidityException,
-			IllegalStateException, IOException, ParsingException, InterruptedException {
-		String playFile = nmt.getConvertedPath( video.getFile() );
-		if ( playFile == null ) {
-			playFile = video.getHttpFile();
-		}
-		video.setPlayFile( playFile );
-		video.setCurrentTime( time );
+	public void play( int time, TimelineSubscriber subscriber ) throws ClientProtocolException, ValidityException, IllegalStateException,
+			IOException, ParsingException, InterruptedException, URISyntaxException {
+		Playable playable = queue.getCurrent();
+		playable.setCurrentTime( time );
+		playable.setState( "playing" );
+		String playFile = playable.getPlayFile();
 		if ( subscriber != null ) {
-			subscriber.updateTimeline( video, "buffering" );
+			subscriber.updateTimeline( playable );
 		}
-		videoCache.add( video );
-		nmt.play( video, time );
-	}
-
-	private void playVideo( int time, String containerKey, TimelineSubscriber subscriber ) throws ClientProtocolException, IOException,
-			ValidityException, IllegalStateException, ParsingException, InterruptedException {
-		Video video = getVideoByKey( containerKey );
-		play( video, time, subscriber );
-	}
-
-	private void play( Track track, int time, TimelineSubscriber subscriber ) throws ValidityException, IllegalStateException,
-			ClientProtocolException, ParsingException, IOException, InterruptedException {
-		track.setCurrentTime( time );
-		if ( subscriber != null ) {
-			subscriber.updateTimeline( track, "buffering" );
-		}
-		nmt.play( track, time );
-	}
-
-	private void playAudio( int viewOffset, String containerKey, String trackKey, TimelineSubscriber subscriber ) throws IllegalStateException,
-			InterruptedException {
-		try {
-			int trackIndex = -1;
-
-			Track[] tracks = server.getTracks( containerKey );
-
-			for ( int i = 0; i < tracks.length; ++i ) {
-				Track track = tracks[i];
-				trackCache.add( track );
-				nmt.insertInQueue( track );
-				if ( track.getKey().equals( trackKey ) ) {
-					track.setCurrentTime( viewOffset );
-					if ( subscriber != null ) {
-						subscriber.updateTimeline( track, "playing" );
-					}
-					trackIndex = i;
-				}
+		if ( playable.getType() == Video.type ) {
+			Video video = fix( (Video) playable );
+			playFile = nmt.getConvertedPath( video.getPlayFile() );
+			if ( playFile == null ) {
+				playFile = playable.getPlayFile();
+			} else {
+				playable.setPlayFile( playFile );
 			}
-
-			for ( int i = 0; i < trackIndex; ++i ) {
-				nmt.sendKey( "next", "playback" );
-			}
-		} catch ( MalformedURLException e ) {
-			e.printStackTrace();
-		} catch ( IOException e ) {
-			e.printStackTrace();
-		} catch ( ValidityException e ) {
-			e.printStackTrace();
-		} catch ( ParsingException e ) {
-			e.printStackTrace();
 		}
+		nmt.play( playable, time );
 	}
 
 	private List< Replacement > replacements = new ArrayList< Replacement >();
@@ -516,9 +481,6 @@ public class PlexNMTHelper implements Container {
 			logger.warning( "Warning, no path replacements have been configured." );
 		}
 
-		videoCache = new VideoCache( this );
-		trackCache = new TrackCache( this );
-
 		nowPlayingMonitor = new NowPlayingMonitor( this, nmt );
 		Thread.sleep( 2000 );
 		new Thread( nowPlayingMonitor ).start();
@@ -527,11 +489,14 @@ public class PlexNMTHelper implements Container {
 	public Video fix( Video video ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException, ParsingException,
 			InterruptedException {
 		logger.finer( "Processing video, key=" + video.getKey() + ", file=" + video.getFile() );
+		if ( video.getPlayFile() != null ) {
+			return video;
+		}
 		String originalFile = video.getFile();
 		String file = originalFile.replace( '\\', '/' );
 		for ( Replacement replacement : replacements ) {
 			if ( replacement.matches( file ) ) {
-				video.setFile( replacement.convert( file ) );
+				video.setPlayFile( replacement.convert( file ) );
 				return video;
 			}
 		}
@@ -540,45 +505,17 @@ public class PlexNMTHelper implements Container {
 			slash = file.indexOf( '/', slash + 1 );
 			String originalShare = originalFile.substring( 0, slash + 1 );
 			String newShare = "smb:" + file.substring( 0, slash + 1 );
-			video.setFile( newShare + file.substring( slash + 1 ) );
+			video.setPlayFile( newShare + file.substring( slash + 1 ) );
 			Replacement replacement = new Replacement( originalShare.replace( '\\', '/' ), newShare );
 			logger.config( "Generated replacement " + replacement );
 			replacements.add( replacement );
 		} else {
-			video.setFile( video.getHttpFile() );
+			video.setPlayFile( video.getHttpFile() );
 		}
 		return video;
 	}
 
-	private VideoCache videoCache = null;
-
-	public Video getVideoByPath( String path ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException,
-			ParsingException, InterruptedException {
-		if ( videoCache == null ) {
-			return null;
-		}
-		return videoCache.getByPath( path );
-	}
-
-	public Video getVideoByKey( String key ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException, ParsingException,
-			InterruptedException {
-		if ( videoCache == null ) {
-			return null;
-		}
-		return videoCache.getByKey( key );
-	}
-
-	private TrackCache trackCache = null;
-
-	public Track getTrack( String path ) throws ClientProtocolException, ValidityException, IllegalStateException, UnsupportedEncodingException,
-			IOException, ParsingException {
-		if ( trackCache == null ) {
-			return null;
-		}
-		return trackCache.get( path );
-	}
-
-	private InetAddress getLocalHostLANAddress() throws UnknownHostException {
+	private static InetAddress getLocalHostLANAddress() throws UnknownHostException {
 		try {
 			InetAddress candidateAddress = null;
 			// Iterate all NICs (network interface cards)...

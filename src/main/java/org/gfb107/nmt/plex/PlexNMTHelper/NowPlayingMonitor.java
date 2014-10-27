@@ -33,6 +33,22 @@ public class NowPlayingMonitor implements Runnable {
 		return lastTrack;
 	}
 
+	private Playable getCurrent() {
+		PlayQueue queue = helper.getQueue();
+		if ( queue == null ) {
+			return null;
+		}
+		return queue.getCurrent();
+	}
+
+	private Playable getNext() {
+		PlayQueue queue = helper.getQueue();
+		if ( queue == null ) {
+			return null;
+		}
+		return queue.next();
+	}
+
 	@Override
 	public void run() {
 		logger.info( "NowPlayingMonitor started" );
@@ -40,12 +56,16 @@ public class NowPlayingMonitor implements Runnable {
 			try {
 				Thread.sleep( 1000 ); // sleep 1 second between iterations
 
+				Playable playable = getCurrent();
+				if ( playable == null ) {
+					logger.fine( "Queue finished" );
+					continue;
+				}
+
 				String state = null;
 
 				Element container = nmt.sendCommand( "playback", "get_current_vod_info" );
 				String returnValue = container.getFirstChildElement( "returnValue" ).getValue();
-
-				Video video = null;
 
 				if ( returnValue.equals( "0" ) ) {
 					logger.fine( "A video is playing" );
@@ -61,42 +81,46 @@ public class NowPlayingMonitor implements Runnable {
 					int currentTime = Integer.parseInt( response.getFirstChildElement( "currentTime" ).getValue() ) * 1000;
 					int totalTime = Integer.parseInt( response.getFirstChildElement( "totalTime" ).getValue() ) * 1000;
 
-					video = helper.getVideoByPath( fullPath );
+					boolean sameVideo = playable.getPlayFile().equals( fullPath );
 
-					if ( lastVideo != null && lastVideo != video ) {
+					if ( lastVideo != null && !sameVideo ) {
 						logger.finer( "It's a different video than last time" );
-						helper.updateTimeline( lastVideo, "stopped" );
+						lastVideo.setState( "stopped" );
+						helper.updateTimeline( lastVideo );
 						lastVideo = null;
 					}
 
 					if ( lastTrack != null ) {
 						logger.fine( "There was a track playing last time" );
-						helper.updateTimeline( lastTrack, "stopped" );
+						lastTrack.setState( "stopped" );
+						helper.updateTimeline( lastTrack );
 						lastTrack = null;
 					}
 
-					if ( video != null ) {
-						video.setCurrentTime( currentTime );
-						if ( video.getDuration() == 0 ) {
-							video.setDuration( totalTime );
+					if ( sameVideo ) {
+						playable.setCurrentTime( currentTime );
+						if ( playable.getDuration() == 0 ) {
+							playable.setDuration( totalTime );
 						}
+						playable.setState( state );
 
-						helper.updateTimeline( video, state );
-
-						lastVideo = video;
+						lastVideo = (Video) playable;
+						helper.updateTimeline( lastVideo );
 
 						continue;
 					}
-				}
-
-				Track track = null;
-
-				if ( video == null ) {
-
+				} else {
 					if ( lastVideo != null ) {
 						logger.fine( "There was a video playing last time" );
-						helper.updateTimeline( lastVideo, "stopped" );
-						lastVideo = null;
+						playable = getNext();
+						if ( playable != null ) {
+							helper.play( 0, null );
+						}
+						lastVideo.setState( "stopped" );
+						helper.updateTimeline( lastVideo );
+						if ( playable != null && playable.getType() == Video.type ) {
+							lastVideo = (Video) playable;
+						}
 					}
 
 					container = nmt.sendCommand( "playback", "get_current_aod_info" );
@@ -114,41 +138,48 @@ public class NowPlayingMonitor implements Runnable {
 						int currentTime = Integer.parseInt( response.getFirstChildElement( "currentTime" ).getValue() ) * 1000;
 						int totalTime = Integer.parseInt( response.getFirstChildElement( "totalTime" ).getValue() ) * 1000;
 
-						track = helper.getTrack( fullPath );
+						boolean sameTrack = playable.getPlayFile().equals( fullPath );
 
-						if ( lastTrack != null && lastTrack != track ) {
+						if ( lastTrack != null && !sameTrack ) {
 							logger.fine( "It's a different track than last time" );
-							helper.updateTimeline( lastTrack, "stopped" );
-							lastTrack = null;
+							lastTrack.setState( "stopped" );
+							helper.updateTimeline( lastTrack );
 						}
 
-						if ( track != null ) {
+						if ( sameTrack ) {
 							if ( state.equals( "play" ) ) {
 								state = "playing";
 							} else if ( state.equals( "pause" ) ) {
 								state = "paused";
 							}
 
-							track.setCurrentTime( currentTime );
-							if ( track.getDuration() == 0 ) {
-								track.setDuration( totalTime );
+							playable.setCurrentTime( currentTime );
+							if ( playable.getDuration() == 0 ) {
+								playable.setDuration( totalTime );
 							}
 
-							helper.updateTimeline( track, state );
-
-							lastTrack = track;
+							playable.setState( state );
+							lastTrack = (Track) playable;
+							helper.updateTimeline( lastTrack );
 
 							continue;
 						}
+					} else {
+						if ( lastTrack != null ) {
+							logger.fine( "No track this time, but there was a track last time" );
+							playable = getNext();
+							if ( playable != null ) {
+								helper.play( 0, null );
+							}
+							lastTrack.setState( "stopped" );
+							helper.updateTimeline( lastTrack );
+							if ( playable != null && playable.getType() == Track.type ) {
+								lastTrack = (Track) playable;
+							}
+							lastTrack = (Track) playable;
+						}
 					}
 				}
-
-				if ( lastTrack != null ) {
-					logger.fine( "No track this time, but there was a track last time" );
-					helper.updateTimeline( lastTrack, "stopped" );
-					lastTrack = null;
-				}
-
 			} catch ( Exception ex ) {
 				ExceptionLogger.log( logger, ex );
 			}

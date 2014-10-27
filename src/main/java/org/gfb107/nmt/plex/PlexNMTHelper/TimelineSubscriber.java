@@ -24,8 +24,6 @@ public class TimelineSubscriber {
 	private static Logger logger = Logger.getLogger( TimelineSubscriber.class.getName() );
 	private String clientId;
 	private String clientName;
-	private String clientAddress;
-	private int clientPort;
 	private String commandId;
 	private String address;
 	private int port;
@@ -46,11 +44,9 @@ public class TimelineSubscriber {
 		this.client = client;
 	}
 
-	public void setClient( String clientId, String clientName, String clientAddress, int clientPort ) {
+	public void setClient( String clientId, String clientName ) {
 		this.clientId = clientId;
 		this.clientName = clientName;
-		this.clientAddress = clientAddress;
-		this.clientPort = clientPort;
 	}
 
 	public String getCommandId() {
@@ -71,6 +67,15 @@ public class TimelineSubscriber {
 
 	public String getPostUrl() {
 		return postUrl;
+	}
+
+	public Element updateTimeline( Playable playable ) throws ValidityException, IllegalStateException, ClientProtocolException, ParsingException,
+			IOException {
+		if ( playable.getType() == Video.type ) {
+			return updateTimeline( (Video) playable, playable.getState() );
+		} else {
+			return updateTimeline( (Track) playable, playable.getState() );
+		}
 	}
 
 	public Element updateTimeline( Track audio, String state ) throws ValidityException, IllegalStateException, ClientProtocolException,
@@ -103,7 +108,7 @@ public class TimelineSubscriber {
 		logger.finer( "Posting to " + postUrl );
 
 		HttpPost post = new HttpPost( postUrl );
-		post.addHeader( "Host", clientAddress + ":" + clientPort );
+		post.addHeader( "Host", address + ":" + port );
 		post.addHeader( "Content-Range", "bytes 0-/-1" );
 		post.addHeader( "X-Plex-Client-Identifier", clientId );
 		post.addHeader( "X-Plex-Device", "stb" );
@@ -136,9 +141,15 @@ public class TimelineSubscriber {
 		return response;
 	}
 
-	private Element generateTimeline( Video video, String state ) {
+	public Element generateTimeline( Video video ) {
+		return generateTimeline( video, video.getState() );
+	}
+
+	public Element generateTimeline( Video video, String state ) {
 		Element timeline = new Element( "Timeline" );
-		timeline.addAttribute( new Attribute( "address", server.getAddress() ) );
+		// timeline.addAttribute( new Attribute( "address", server.getAddress()
+		// ) );
+		timeline.addAttribute( new Attribute( "address", address ) );
 		// timeline.addAttribute( new Attribute( "audioStreamID",
 		// Integer.toString( video.getStream( audioStreamIndex ) ) ) );
 		timeline.addAttribute( new Attribute( "containerKey", video.getContainerKey() ) );
@@ -149,7 +160,9 @@ public class TimelineSubscriber {
 		timeline.addAttribute( new Attribute( "location", video.getLocation() ) );
 		timeline.addAttribute( new Attribute( "machineIdentifier", clientId ) );
 		timeline.addAttribute( new Attribute( "mute", "0" ) );
-		timeline.addAttribute( new Attribute( "port", Integer.toString( server.getPort() ) ) );
+		// timeline.addAttribute( new Attribute( "port", Integer.toString(
+		// server.getPort() ) ) );
+		timeline.addAttribute( new Attribute( "port", Integer.toString( port ) ) );
 		timeline.addAttribute( new Attribute( "protocol", "http" ) );
 		timeline.addAttribute( new Attribute( "ratingKey", video.getRatingKey() ) );
 		timeline.addAttribute( new Attribute( "repeat", "0" ) );
@@ -164,7 +177,11 @@ public class TimelineSubscriber {
 		return timeline;
 	}
 
-	private Element generateTimeline( Track audio, String state ) {
+	public Element generateTimeline( Track audio ) {
+		return generateTimeline( audio, audio.getState() );
+	}
+
+	public Element generateTimeline( Track audio, String state ) {
 		Element timeline = new Element( "Timeline" );
 		timeline.addAttribute( new Attribute( "address", server.getAddress() ) );
 		timeline.addAttribute( new Attribute( "containerKey", audio.getContainerKey() ) );
@@ -192,7 +209,7 @@ public class TimelineSubscriber {
 		return timeline;
 	}
 
-	private Element generateEmptyTimeline( String type ) {
+	public Element generateEmptyTimeline( String type ) {
 		Element timeline = new Element( "Timeline" );
 		timeline.addAttribute( new Attribute( "location", "navigation" ) );
 		// timeline.addAttribute( new Attribute( "seekRange", "0-0" ) );

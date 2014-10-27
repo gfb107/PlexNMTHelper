@@ -6,32 +6,43 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
+import java.net.SocketAddress;
 import java.util.logging.Logger;
 
 public class GDMAnnouncer implements Runnable {
 
 	private static Logger logger = Logger.getLogger( GDMAnnouncer.class.getName() );
 	private InetAddress gdmAddress = null;
+	private InetAddress myAddress = null;
 	private static final int announcePort = 32412;
 	private String announceMessage = null;
 	private boolean stop = false;
 
-	public GDMAnnouncer( String name, String clientId, int port ) {
-		StringBuilder sb = new StringBuilder( "HELLO * HTTP/1.0\n" );
-		sb.append( "Name: " + name + "\n" );
-		sb.append( "Port: " + port + "\n" );
-		sb.append( "Product: " + NetworkedMediaTank.productName + "\n" );
-		sb.append( "Content-Type: plex/media-player\n" );
-		sb.append( "Protocol: plex\n" );
-		sb.append( "Protocol-Version: 1\n" );
-		sb.append( "Protocol-Capabilities: navigation,playback,timeline\n" );
-		sb.append( "Version: 0.1\n" );
-		sb.append( "Resource-Identifier: " + clientId + "\n" );
-		sb.append( "Device-Class: stb\n" );
-		sb.append( "\n" );
+	public GDMAnnouncer( String name, String clientId, InetAddress address, int port ) {
+		myAddress = address;
+		StringBuilder sb = new StringBuilder( "HTTP/1.0 200 OK\r\n" );
+		sb.append( "Content-Type: plex/media-player\r\n" );
+		sb.append( "Resource-Identifier: " + clientId + "\r\n" );
+		// sb.append( "Machine-Identifier: " + clientId + "\r\n" );
+
+		sb.append( "Device-Class: stb\r\n" );
+		sb.append( "Name: " + name + "\r\n" );
+		sb.append( "Port: " + port + "\r\n" );
+
+		// sb.append( "Host: " + address.getHostAddress() + "\n" );
+
+		sb.append( "Product: " + NetworkedMediaTank.productName + "\r\n" );
+		sb.append( "Protocol: plex\r\n" );
+		sb.append( "Protocol-Capabilities: navigation,playback,timeline\r\n" );
+		sb.append( "Protocol-Version: 1\r\n" );
+		sb.append( "Version: 0.0.1\r\n" );
+
+		sb.append( "\r\n" );
 
 		announceMessage = sb.toString();
+		logger.finer( announceMessage );
 	}
 
 	public void setStop( boolean stop ) {
@@ -44,8 +55,8 @@ public class GDMAnnouncer implements Runnable {
 		MulticastSocket announceSocket = null;
 		try {
 			gdmAddress = InetAddress.getByName( "239.0.0.250" );
-
-			announceSocket = new MulticastSocket( announcePort );
+			SocketAddress socketAddress = new InetSocketAddress( myAddress, announcePort );
+			announceSocket = new MulticastSocket( socketAddress );
 
 			announceSocket.joinGroup( gdmAddress );
 		} catch ( IOException e ) {
@@ -62,15 +73,12 @@ public class GDMAnnouncer implements Runnable {
 				BufferedReader reader = new BufferedReader( new InputStreamReader( new ByteArrayInputStream( pollPacket.getData() ) ) );
 
 				String line = reader.readLine();
-				while ( reader.readLine() != null ) {
-					;
-				}
+				logger.finer( line );
+				while ( reader.readLine() != null ) {}
 
 				if ( !line.contains( "M-SEARCH * HTTP/1." ) ) {
 					continue;
 				}
-
-				logger.finer( announceMessage );
 
 				DatagramPacket announcePacket = new DatagramPacket( announceMessage.getBytes(), announceMessage.length(), pollPacket.getAddress(),
 						pollPacket.getPort() );
