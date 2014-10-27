@@ -13,6 +13,14 @@ It can be controlled using
 
 History
 =======
+Version 1.0.9
+	Fixes for Plex/Web client
+	Improved PlayQueue/Playlist support
+	Removed Cache
+	
+Version 1.0.8
+	Basic fix for PlayQueues, does not support multiple items in the queue
+	
 Version 1.0.7
 	Don't use list_user_storage_file to convert file paths that are already in NMT format
 	
