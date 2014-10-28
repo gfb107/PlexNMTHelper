@@ -28,6 +28,9 @@ It can be controlled using
 
 ###History
 
+Version 1.0.10
+	Fix to TV Episodes
+
 Version 1.0.9
 	Fixes for Plex/Web client
 	Improved PlayQueue/Playlist support
