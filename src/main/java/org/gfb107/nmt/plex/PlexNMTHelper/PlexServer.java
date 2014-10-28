@@ -102,17 +102,34 @@ public class PlexServer {
 		return response;
 	}
 
-	public PlayQueue getPlayQueue( String fullContainerKey ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException,
+	public PlayQueue getPlayQueue( String containerKey ) throws ClientProtocolException, ValidityException, IllegalStateException, IOException,
 			ParsingException, URISyntaxException {
-		String containerKey = fullContainerKey.substring( 0, fullContainerKey.indexOf( '?' ) );
-		Element element = sendCommand( getBuilder().setPath( containerKey ).build() );
+		String[] parts = containerKey.split( "\\?" );
+		String path = parts[0];
+		String query = null;
+		if ( parts.length > 1 ) {
+			query = parts[1];
+		}
+		URIBuilder builder = getBuilder().setPath( path );
+
+		if ( query != null ) {
+			parts = query.split( "&" );
+			for ( int i = 0; i < parts.length; i++ ) {
+				String[] parm = parts[i].split( "=" );
+				if ( parm.length > 1 ) {
+					builder.addParameter( parm[0], parm[1] );
+				}
+			}
+		}
+
+		Element element = sendCommand( builder.build() );
 
 		PlayQueue queue = new PlayQueue( containerKey, Integer.parseInt( element.getAttributeValue( "playQueueSelectedItemOffset" ) ) );
 		Elements tracks = element.getChildElements();
 		for ( int t = 0; t < tracks.size(); ++t ) {
 			Element trackElement = tracks.get( t );
 			String type = trackElement.getAttributeValue( "type" );
-			if ( type.equals( "movie" ) ) {
+			if ( type.equals( "movie" ) || type.equals( "episode" ) ) {
 				queue.add( getVideo( containerKey, trackElement ) );
 			} else if ( type.equals( "track" ) ) {
 				queue.add( getTrack( containerKey, trackElement ) );
