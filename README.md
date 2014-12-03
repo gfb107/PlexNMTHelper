@@ -28,6 +28,9 @@ It can be controlled using
 
 ###History
 
+Version 1.0.11
+	Add support for "My Home".  Note it will not work if you use HTTP Streaming.
+
 Version 1.0.10
 	Fix to TV Episodes
 

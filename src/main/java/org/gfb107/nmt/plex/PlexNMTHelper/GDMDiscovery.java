@@ -14,7 +14,7 @@ import nu.xom.ValidityException;
 
 public class GDMDiscovery {
 
-	private static Logger logger = Logger.getLogger( GDMDiscovery.class.getName() );
+	private Logger logger = Logger.getLogger( GDMDiscovery.class.getName() );
 	private static final String broadcastAddress = "239.0.0.250";
 	private static final int discoveryPort = 32414;
 	private static final String discoveryMessage = "M-SEARCH * HTTP/1.1\r\n\r\n";

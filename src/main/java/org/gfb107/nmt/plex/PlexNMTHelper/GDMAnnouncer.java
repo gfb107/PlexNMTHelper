@@ -13,7 +13,7 @@ import java.util.logging.Logger;
 
 public class GDMAnnouncer implements Runnable {
 
-	private static Logger logger = Logger.getLogger( GDMAnnouncer.class.getName() );
+	private Logger logger = Logger.getLogger( GDMAnnouncer.class.getName() );
 	private InetAddress gdmAddress = null;
 	private InetAddress myAddress = null;
 	private static final int announcePort = 32412;

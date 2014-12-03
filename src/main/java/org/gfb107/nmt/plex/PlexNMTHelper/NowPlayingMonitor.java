@@ -5,7 +5,7 @@ import java.util.logging.Logger;
 import nu.xom.Element;
 
 public class NowPlayingMonitor implements Runnable {
-	private static Logger logger = Logger.getLogger( NowPlayingMonitor.class.getName() );
+	private Logger logger = Logger.getLogger( NowPlayingMonitor.class.getName() );
 
 	public NowPlayingMonitor( PlexNMTHelper helper, NetworkedMediaTank nmt ) {
 		this.helper = helper;
@@ -59,6 +59,8 @@ public class NowPlayingMonitor implements Runnable {
 				Playable playable = getCurrent();
 				if ( playable == null ) {
 					logger.fine( "Queue finished" );
+					lastVideo = null;
+					lastTrack = null;
 					continue;
 				}
 

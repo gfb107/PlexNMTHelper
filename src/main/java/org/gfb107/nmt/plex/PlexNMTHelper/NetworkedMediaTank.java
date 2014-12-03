@@ -19,7 +19,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
 public class NetworkedMediaTank {
-	private static Logger logger = Logger.getLogger( NetworkedMediaTank.class.getName() );
+	private Logger logger = Logger.getLogger( NetworkedMediaTank.class.getName() );
 	private String address;
 	private String name;
 

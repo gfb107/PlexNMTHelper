@@ -21,7 +21,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
 
 public class TimelineSubscriber {
-	private static Logger logger = Logger.getLogger( TimelineSubscriber.class.getName() );
+	private Logger logger = Logger.getLogger( TimelineSubscriber.class.getName() );
 	private String clientId;
 	private String clientName;
 	private String commandId;

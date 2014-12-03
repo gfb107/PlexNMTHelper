@@ -1,6 +1,8 @@
 package org.gfb107.nmt.plex.PlexNMTHelper;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.logging.Logger;
@@ -12,6 +14,7 @@ import nu.xom.Elements;
 import nu.xom.ParsingException;
 import nu.xom.ValidityException;
 
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.StatusLine;
 import org.apache.http.client.ClientProtocolException;
@@ -19,10 +22,9 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.util.EntityUtils;
 
 public class PlexServer {
-	private static Logger logger = Logger.getLogger( PlexServer.class.getName() );
+	private Logger logger = Logger.getLogger( PlexServer.class.getName() );
 	private String name;
 	private String address;
 	private int port;
@@ -81,7 +83,16 @@ public class PlexServer {
 		get.addHeader( "X-Plex-Device-Name", clientName );
 		get.addHeader( "X-plex-Model", "Linux" );
 		get.addHeader( "X-Plex-Provides", "player" );
-		get.addHeader( "X-Plex-Version", "0.1" );
+		get.addHeader( "X-Plex-Product", NetworkedMediaTank.productName );
+		get.addHeader( "X-Plex-Version", NetworkedMediaTank.productVersion );
+		if ( token != null ) {
+			get.addHeader( "X-Plex-Token", token );
+		}
+
+		Header[] headers = get.getAllHeaders();
+		for ( Header header : headers ) {
+			logger.finer( header.getName() + ": " + header.getValue() );
+		}
 
 		CloseableHttpResponse httpResponse = client.execute( get );
 		HttpEntity entity = httpResponse.getEntity();
@@ -95,7 +106,14 @@ public class PlexServer {
 			response = new Element( "Response" );
 			response.addAttribute( new Attribute( "code", Integer.toString( statusLine.getStatusCode() ) ) );
 			response.addAttribute( new Attribute( "status", statusLine.getReasonPhrase() ) );
-			EntityUtils.consume( entity );
+			StringBuilder sb = new StringBuilder();
+			BufferedReader reader = new BufferedReader( new InputStreamReader( entity.getContent() ) );
+			String line = null;
+			while ( (line = reader.readLine()) != null ) {
+				sb.append( line );
+				sb.append( "\n" );
+			}
+			response.addAttribute( new Attribute( "content", sb.toString() ) );
 		}
 
 		logger.finer( "Response was " + response.toXML() );
@@ -117,7 +135,9 @@ public class PlexServer {
 			for ( int i = 0; i < parts.length; i++ ) {
 				String[] parm = parts[i].split( "=" );
 				if ( parm.length > 1 ) {
-					builder.addParameter( parm[0], parm[1] );
+					if ( !parm[0].equals( "own" ) ) {
+						builder.addParameter( parm[0], parm[1] );
+					}
 				}
 			}
 		}
@@ -197,5 +217,11 @@ public class PlexServer {
 		Track track = new Track( containerKey, key, ratingKey, title, file, duration );
 		track.setPlayFile( getPrefix() + file );
 		return track;
+	}
+
+	private String token = null;
+
+	public void setToken( String token ) {
+		this.token = token;
 	}
 }

@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -19,7 +20,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
+
+import javax.xml.bind.DatatypeConverter;
 
 import nu.xom.Attribute;
 import nu.xom.Builder;
@@ -29,9 +33,14 @@ import nu.xom.Elements;
 import nu.xom.ParsingException;
 import nu.xom.ValidityException;
 
+import org.apache.http.HttpEntity;
 import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
 import org.simpleframework.http.Path;
 import org.simpleframework.http.Query;
 import org.simpleframework.http.Request;
@@ -51,9 +60,11 @@ public class PlexNMTHelper implements Container {
 			if ( !logsDir.exists() ) {
 				logsDir.mkdirs();
 			}
-			System.setProperty( "java.util.logging.config.file", "logging.properties" );
-			logger = Logger.getLogger( PlexNMTHelper.class.getName() );
+			File loggingProperties = new File( "logging.properties" );
+			LogManager.getLogManager().readConfiguration( new FileInputStream( loggingProperties ) );
+			System.out.println( "Using " + loggingProperties.getAbsolutePath() );
 
+			logger = Logger.getLogger( PlexNMTHelper.class.getName() );
 			String fileName = "PlexNMTHelper.properties";
 
 			if ( args.length == 1 ) {
@@ -104,6 +115,7 @@ public class PlexNMTHelper implements Container {
 				logger.severe( "Missing property replacementConfig" );
 				return;
 			}
+
 			File replacementConfig = new File( temp );
 
 			NetworkedMediaTank nmt = new NetworkedMediaTank( nmtAddress, nmtName );
@@ -115,6 +127,12 @@ public class PlexNMTHelper implements Container {
 
 			server.setClientId( clientId );
 			server.setClientName( nmt.getName() );
+
+			String user = properties.getProperty( "user" );
+			String password = properties.getProperty( "password" );
+			if ( user != null & password != null ) {
+				server.setToken( getToken( user, password, clientId ) );
+			}
 
 			PlexNMTHelper helper = new PlexNMTHelper( nmt, myAddress, port, server );
 			helper.initReplacements( replacementConfig );
@@ -154,9 +172,6 @@ public class PlexNMTHelper implements Container {
 		}
 	}
 
-	private InetAddress myAddress;
-	private int listenPort = -1;
-
 	private NetworkedMediaTank nmt;
 
 	private PlexServer server;
@@ -165,7 +180,7 @@ public class PlexNMTHelper implements Container {
 	private Map< String, String > playbackMap = new HashMap< String, String >();
 	private Map< String, TimelineSubscriber > subscribers = new LinkedHashMap< String, TimelineSubscriber >();
 
-	private CloseableHttpClient client = HttpClients.createDefault();
+	private static CloseableHttpClient client = HttpClients.createDefault();
 
 	private Element successResponse = null;
 
@@ -177,9 +192,6 @@ public class PlexNMTHelper implements Container {
 		this.nmt = nmt;
 		this.server = server;
 		server.setClient( client );
-
-		myAddress = address;
-		listenPort = port;
 
 		navigationMap.put( "moveRight", "right" );
 		navigationMap.put( "moveLeft", "left" );
@@ -286,12 +298,14 @@ public class PlexNMTHelper implements Container {
 
 		Query query = request.getQuery();
 
-		logger.fine( "Processing " + method + " request for " + fullPath );
-		for ( Map.Entry< String, String > entry : query.entrySet() ) {
-			logger.finer( entry.getKey() + "=" + entry.getValue() );
-		}
-		for ( String headerName : request.getNames() ) {
-			logger.finer( headerName + ": " + request.getValue( headerName ) );
+		if ( !fullPath.equals( "/player/timeline/poll" ) ) {
+			logger.fine( "Processing " + method + " request for " + fullPath );
+			for ( Map.Entry< String, String > entry : query.entrySet() ) {
+				logger.finer( entry.getKey() + "=" + entry.getValue() );
+			}
+			for ( String headerName : request.getNames() ) {
+				logger.finer( headerName + ": " + request.getValue( headerName ) );
+			}
 		}
 		if ( fullPath.equals( "/resources" ) ) {
 			return "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<MediaContainer><Player title=\"" + nmt.getName()
@@ -327,10 +341,8 @@ public class PlexNMTHelper implements Container {
 			nmt.sendKey( "stop", "playback" );
 
 			int offset = query.getInteger( "offset" );
-			String type = query.get( "type" );
 			String commandId = query.get( "commandID" );
 			String containerKey = query.get( "containerKey" );
-			String key = query.get( "key" );
 
 			// String clientId = request.getValue( "X-Plex-Client-Identifier" );
 			TimelineSubscriber subscriber = updateSubscriber( clientId, commandId );
@@ -568,4 +580,27 @@ public class PlexNMTHelper implements Container {
 		}
 	}
 
+	private static String getToken( String user, String password, String clientId ) throws ClientProtocolException, IOException {
+		String token = null;
+
+		HttpPost request = new HttpPost( "https://plex.tv/users/sign_in.json" );
+
+		String value = user + ":" + password;
+		String encoded = DatatypeConverter.printBase64Binary( value.getBytes() );
+
+		request.addHeader( "Authorization", "Basic " + encoded );
+		request.addHeader( "X-Plex-Client-Identifier", clientId );
+		request.addHeader( "X-Plex-Product", NetworkedMediaTank.productName );
+		request.addHeader( "X-Plex-Version", NetworkedMediaTank.productVersion );
+
+		CloseableHttpResponse response = client.execute( request );
+		HttpEntity entity = response.getEntity();
+		if ( entity != null && entity.getContentLength() != 0 ) {
+			JSONObject wrapper = (JSONObject) JSONValue.parse( new InputStreamReader( entity.getContent() ) );
+			JSONObject jsonUser = (JSONObject) wrapper.get( "user" );
+			token = (String) jsonUser.get( "authentication_token" );
+		}
+
+		return token;
+	}
 }
