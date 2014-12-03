@@ -20,7 +20,7 @@ It can be controlled using
 
 ###Installation
 
-1. Download the [PlexNMTHelper.zip](https://github.com/gfb107/PlexNMTHelper/releases/download/v1.0.10/PlexNMTHelper.zip)
+1. Download the [PlexNMTHelper.zip](https://github.com/gfb107/PlexNMTHelper/releases/download/v1.0.11/PlexNMTHelper.zip)
 2. Unzip to the installation folder of your choice (e.g. C:\Program Files\PlexNMTHelper )
 3. Copy *PlexNMTHelper.properties* and *config.xml* from the samples sub-folder to the installation folder.
 4. Modify *PlexNMTHelper.properties* and *config.xml* for your configuration
